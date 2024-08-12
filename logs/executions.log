@@ -1,9 +1,0 @@
-------------------------------------------------------------------------------------------------
-execution 1 (of 1) at Mon Aug 12 10:20:22 CEST 2024
-./scripts/runLocal.sh duration: 60; algo: 2; clis: 6; servers: 3; locality: 90%; msgs: 0;
-------------------------------------------------------------------------------------------------
-started 3 servers
-started 6 clients
-waiting...
-all nodes done
-processes killed

@@ -44,7 +44,7 @@ public class ArgsParser {
         parser.command = "Client";
         parser.id.setRequired(true);
         parser.clientCount.setRequired(true);
-        parser.algorithm.setRequired(true);
+        // parser.algorithm.setRequired(true);
         parser.options.addOption(parser.id);
         parser.options.addOption(parser.algorithm);
         parser.options.addOption(parser.clientCount);
@@ -71,7 +71,7 @@ public class ArgsParser {
         parser.command = "Server";
         parser.id.setRequired(true);
         parser.clientCount.setRequired(true);
-        parser.algorithm.setRequired(true);
+        // parser.algorithm.setRequired(true);
         parser.options.addOption(parser.id);
         parser.options.addOption(parser.algorithm);
         parser.options.addOption(parser.clientCount);
@@ -132,7 +132,7 @@ public class ArgsParser {
         return line.hasOption("tt");
     }
 
-        public boolean includeLocalMsgs() {
+    public boolean includeLocalMsgs() {
         return line.hasOption("localMsgs");
     }
 
