@@ -1,0 +1,109 @@
+loadByzCastTreeAsGraph, read pair 0 1 
+loadByzCastTreeAsGraph, read pair 0 2 
+ByzCast Tree: strict digraph G {
+  0;
+  1;
+  2;
+  0 -> 1;
+  0 -> 2;
+}
+ 
+Channel to node 0 : [id: 0xd21aa278, L:/127.0.0.1:51618 - R:/127.0.0.1:3000] 
+Channel to node 1 : [id: 0x2527453f, L:/127.0.0.1:51619 - R:/127.0.0.1:3010] 
+Channel to node 2 : [id: 0x80de0ff6, L:/127.0.0.1:51617 - R:/127.0.0.1:3020] 
+Init OK - Server 0 
+Init OK - Server 1 
+Init OK - Server 2 
+Ready OK - Server 0 
+All other clients ready! 
+Started AWS ByzCast experiment 
+Locality: 90 % 
+ByzCast Tree: 1 
+My home warehouse: 0 
+Sending a TPCC like PAYLOAD in messages 
+ONLY GLOBAL messages 
+Start tp measurements
+Tp at sec 0: 431
+Tp at sec 1: 857
+Tp at sec 2: 750
+Tp at sec 3: 951
+Tp at sec 4: 1199
+Tp at sec 5: 1341
+Tp at sec 6: 1482
+Tp at sec 7: 1539
+Tp at sec 8: 1968
+Tp at sec 9: 2265
+Tp at sec 10: 2220
+Tp at sec 11: 2636
+Tp at sec 12: 3202
+Tp at sec 13: 3773
+Tp at sec 14: 3708
+Tp at sec 15: 3523
+Tp at sec 16: 3759
+Tp at sec 17: 3366
+Tp at sec 18: 3678
+Tp at sec 19: 3911
+Tp at sec 20: 4117
+Tp at sec 21: 3971
+Tp at sec 22: 3858
+Tp at sec 23: 3442
+Tp at sec 24: 3727
+Tp at sec 25: 3816
+Tp at sec 26: 4023
+Tp at sec 27: 3638
+Tp at sec 28: 3875
+Tp at sec 29: 3993
+Tp at sec 30: 3712
+Tp at sec 31: 3641
+Tp at sec 32: 3817
+Tp at sec 33: 3885
+Tp at sec 34: 4141
+Tp at sec 35: 3870
+Tp at sec 36: 3735
+Tp at sec 37: 3801
+Tp at sec 38: 3546
+Tp at sec 39: 4041
+Tp at sec 40: 3615
+Tp at sec 41: 3914
+Tp at sec 42: 3374
+Tp at sec 43: 4048
+Tp at sec 44: 3780
+Tp at sec 45: 4185
+Tp at sec 46: 3845
+Tp at sec 47: 4000
+Tp at sec 48: 4147
+Tp at sec 49: 3977
+Tp at sec 50: 4021
+Tp at sec 51: 3728
+Tp at sec 52: 3995
+Tp at sec 53: 3863
+Tp at sec 54: 3764
+Tp at sec 55: 4028
+Tp at sec 56: 3619
+Tp at sec 57: 4235
+Tp at sec 58: 3633
+Tp at sec 59: 4170
+Tp at sec 60: 0
+LOCAL STATS: 
+--------------
+Stats:
+	Total: 201169
+	Mean: 290.4072695097157
+	StdDev: 843.9521290256338
+	Max: 83931
+	Percentile (25, 50, 75, 95, 99): (218, 235, 259, 456, 1102)
+--------------
+
+ 
+End OK - Server 0 
+End OK - Server 1 
+End OK - Server 2 
+# of msgs to 1 dests: 0 
+# of msgs to 2 dests: 180848 
+# of msgs to 3 dests: 20321 
+Wload for destination size 2: 
+# of msgs to [ 0 1 ]: 162904 
+# of msgs to [ 0 2 ]: 17944 
+Wload for destination size 3: 
+# of msgs to [ 0 1 2 ]: 20321 
+Finished AWS ByzCast experiment. Elapsed:  60.000105149 seconds 

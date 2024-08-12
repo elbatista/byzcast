@@ -1,0 +1,31 @@
+loadByzCastTreeAsGraph, read pair 0 1 
+loadByzCastTreeAsGraph, read pair 0 2 
+ByzCast Tree: strict digraph G {
+  0;
+  1;
+  2;
+  0 -> 1;
+  0 -> 2;
+}
+ 
+Node1, pos: -1, [127.0.0.1:3010] ByzCast Node - Start listening ... 
+loadByzCastTree, read pair 0 1 
+loadByzCastTree, read pair 0 2 
+Channel to client 1 : [id: 0xbcfabf5c, L:/127.0.0.1:3010 - R:/127.0.0.1:51623] 
+Channel to client 3 : [id: 0xcd69d548, L:/127.0.0.1:3010 - R:/127.0.0.1:51613] 
+Channel to client 4 : [id: 0xd51b740d, L:/127.0.0.1:3010 - R:/127.0.0.1:51616] 
+Channel to client 2 : [id: 0x2e58b6fd, L:/127.0.0.1:3010 - R:/127.0.0.1:51627] 
+Channel to client 5 : [id: 0x8f6cc5e8, L:/127.0.0.1:3010 - R:/127.0.0.1:51622] 
+Channel to client 0 : [id: 0x7a531031, L:/127.0.0.1:3010 - R:/127.0.0.1:51619] 
+All 6  clients done! 
+Queue is empty ! =] 
+Messages persisted 
+------------------------------------- 
+Total msgs in the history: 845703 
+Total local msgs received: 0 
+Total msgs received: 845703 
+Total msgs to me received: 845703 
+% of overhead: 0 
+Created msg sizes file 
+------------------------------------- 
+Node 1 is finished 
