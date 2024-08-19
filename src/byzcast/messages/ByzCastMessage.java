@@ -186,6 +186,17 @@ public class ByzCastMessage extends BaseObj implements Externalizable {
             }
         }
         out.writeLong(orderDate.getTime());
+
+        // write fixed 64 bytes payload 
+        out.writeLong(Long.MAX_VALUE);
+        out.writeLong(Long.MAX_VALUE);
+        out.writeLong(Long.MAX_VALUE);
+        out.writeLong(Long.MAX_VALUE);
+        out.writeLong(Long.MAX_VALUE);
+        out.writeLong(Long.MAX_VALUE);
+        out.writeLong(Long.MAX_VALUE);
+        out.writeLong(Long.MAX_VALUE);
+
     }
 
     @Override
@@ -243,9 +254,20 @@ public class ByzCastMessage extends BaseObj implements Externalizable {
             }
         }
         orderDate = new Date(in.readLong());
+
+        // read fixed 64 bytes payload 
+        in.readLong();
+        in.readLong();
+        in.readLong();
+        in.readLong();
+        in.readLong();
+        in.readLong();
+        in.readLong();
+        in.readLong();
+
     }
     
-    public short getMinDest() {
-        return getDst()[0];
-    }
+    // public short getMinDest() {
+    //     return getDst()[0];
+    // }
 }

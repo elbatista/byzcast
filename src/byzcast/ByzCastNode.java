@@ -103,7 +103,7 @@ public class ByzCastNode extends ByzCastServerProxy {
         print("Total local msgs received:", localMsgs);
         print("Total msgs received:", msgsTotal);
         print("Total msgs to me received:", msgsToMe);
-        print("% of overhead:", 100-((msgsToMe*100)/msgsTotal));
+        if(msgsTotal > 0) print("% of overhead:", 100-((msgsToMe*100)/msgsTotal));
         //printF("Avg msg size", Stats.of(getSizes()).mean());
         files.persistMsgSizes(getSizes(), getId());
         print("-------------------------------------");
