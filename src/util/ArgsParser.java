@@ -10,7 +10,7 @@ import org.apache.commons.cli.ParseException;
 
 public class ArgsParser {
     private Option log, id, numMsgs, clientCount, duration, tpcc, numPartitions, 
-    locality, homewarehouse, region, algorithm, tree, gc, payload, tt, localMsgs, reconfigClient;
+    locality, homewarehouse, region, algorithm, tree, gc, payload, tt, localMsgs, reconfigClient, randPayloadSize;
     private Options options;
     private CommandLineParser parser;
     private CommandLine line;
@@ -34,6 +34,7 @@ public class ArgsParser {
         tree = Option.builder("tree").desc("tree").argName("tree").hasArg().numberOfArgs(1).type(Short.class).build();
         gc = Option.builder("gc").desc("gc client").argName("gc").hasArg().numberOfArgs(1).type(Integer.class).build();
         reconfigClient = Option.builder("rc").desc("reconfig client").argName("rc").hasArg().numberOfArgs(1).type(Integer.class).build();
+        randPayloadSize = Option.builder("rps").desc("random payload size (in bytes)").argName("randPayloadSize").hasArg().numberOfArgs(1).type(Integer.class).build();
         options = new Options();
         parser = new DefaultParser();
         line = null;
@@ -62,6 +63,7 @@ public class ArgsParser {
         parser.options.addOption(parser.tt);
         parser.options.addOption(parser.localMsgs);
         parser.options.addOption(parser.reconfigClient);
+        parser.options.addOption(parser.randPayloadSize);
         parser.parse(args);
         return parser;
     }
@@ -177,5 +179,10 @@ public class ArgsParser {
             System.err.println(exp.getMessage());
             System.exit(-1);
         }
+    }
+
+    public int getRandPayloadSize() {
+        String v = line.getOptionValue("rps");
+        return v == null ? 16 : Integer.valueOf(v);
     }
 }

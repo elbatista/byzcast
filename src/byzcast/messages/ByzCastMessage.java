@@ -20,6 +20,7 @@ public class ByzCastMessage extends BaseObj implements Externalizable {
     private int id = -1, cliId = -1;
     private Type type;
     private short [] dst;
+    private byte[] randPayload;
 
     // "transient" fields
     private Channel channelIn;
@@ -111,6 +112,14 @@ public class ByzCastMessage extends BaseObj implements Externalizable {
         this.dst = dst;
     }
 
+    public void setRandPayload(byte[] randPayload) {
+        this.randPayload = randPayload;
+    }
+
+    public byte[] getRandPayload() {
+        return randPayload;
+    }
+
     @Override
     public int hashCode() {
         return getId();
@@ -154,6 +163,14 @@ public class ByzCastMessage extends BaseObj implements Externalizable {
     }
 
     private void writeExtPayload(ObjectOutput out) throws IOException{
+        if(randPayload != null && randPayload.length > 0) {
+            out.writeInt(randPayload.length);
+            out.write(randPayload);
+        }
+        else {
+            out.writeInt(0);
+        }
+
         switch(transaction){
             case NOPAYLOAD: {out.writeByte(10); return;}
             case NEW: {
@@ -209,6 +226,15 @@ public class ByzCastMessage extends BaseObj implements Externalizable {
     }
 
     private void readExtPayload(ObjectInput in) throws IOException {
+
+        int randPayloadSize = in.readInt();
+        if(randPayloadSize > 0) {
+            this.randPayload = new byte[randPayloadSize];
+            in.readFully(this.randPayload);
+        } else {
+            this.randPayload = null;
+        }
+
         short transtype = in.readByte();
         switch(transtype){
             case 10: setTransaction(TransactionType.NOPAYLOAD); return;

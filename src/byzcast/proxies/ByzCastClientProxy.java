@@ -40,9 +40,6 @@ public class ByzCastClientProxy extends Node {
         super(id);
         outChannels = new HashMap<>();
         tree = new FileManager().loadByzCastTreeAsGraph();
-
-        
-        
         print("ByzCast Tree:", getTreeString());
     }
 
