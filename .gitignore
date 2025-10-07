@@ -22,3 +22,7 @@ hs_err_pid*
 replay_pid*
 .DS_Store
 bin
+results
+logs
+files
+experiment*

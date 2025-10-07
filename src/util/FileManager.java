@@ -220,18 +220,37 @@ public class FileManager extends BaseObj {
                     StringTokenizer str = new StringTokenizer(line, "->");
                     if(str.countTokens() > 1){
                         short id1 = Short.valueOf(str.nextToken());
-                        short id2 = Short.valueOf(str.nextToken());
-                        pairs.add(new Pair<Short,Short>(id1, id2));
-                        print("loadByzCastTree, read pair", id1, id2);
+
+                        String [] targets = str.nextToken()
+                        .replace("[", "")
+                        .replace("]","").split(",");
+                        
+                        for(String s : targets){
+                            short id2 = Short.valueOf(s);
+                            pairs.add(new Pair<Short,Short>(id1, id2));
+                            print("loadByzCastTree, read pair", id1, id2);
+                        }
                     }
                 }
             }
 
             while((line = rd.readLine()) != null){
                 if(line.startsWith("#") || line.isEmpty()) continue; // ignore comments #
-                String [] map = line.split(",");
-                if(map != null && map.length > 0 && Short.valueOf(map[0]) == id){
-                    mappings.add(map);
+                String [] firstSplit = line.split(",");
+
+                short mapId = Short.valueOf(firstSplit[0]);
+                String dest = firstSplit[firstSplit.length-1];
+
+                java.util.regex.Matcher matcher = java.util.regex.Pattern
+                .compile("\\[(.*?)\\]")
+                .matcher(line);
+
+                if (matcher.find()) {
+                    String [] secSplit = matcher.group(1).split(",");
+                    for (String sec : secSplit){
+                        if (mapId == id) mappings.add(new String[]{String.valueOf(id),sec,dest});
+                        // print("loadByzCastTree, adding triple", String.valueOf(myId), sec, dest);
+                    }
                     print("loadByzCastTree, read map", line);
                 }
             }
@@ -264,11 +283,19 @@ public class FileManager extends BaseObj {
                     StringTokenizer str = new StringTokenizer(line, "->");
                     if(str.countTokens() > 1){
                         short id1 = Short.valueOf(str.nextToken());
-                        short id2 = Short.valueOf(str.nextToken());
-                        graph.addVertex(id1);
-                        graph.addVertex(id2);
-                        graph.addEdge(id1, id2);
-                        print("loadByzCastTreeAsGraph, read pair", id1, id2);
+
+
+                        String [] targets = str.nextToken()
+                        .replace("[", "")
+                        .replace("]","").split(",");
+                        
+                        for(String s : targets){
+                            short id2 = Short.valueOf(s);
+                            graph.addVertex(id1);
+                            graph.addVertex(id2);
+                            graph.addEdge(id1, id2);
+                            // print("loadByzCastTreeAsGraph, read pair", id1, id2);
+                        }
                     }
                 }
             }

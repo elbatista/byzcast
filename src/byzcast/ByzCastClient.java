@@ -54,7 +54,7 @@ public class ByzCastClient extends ByzCastClientProxy {
     private static final int stockLevelWeight = 4;
 
     public ByzCastClient(short id, ArgsParser args, boolean start){
-        super(id, args.getTree());
+        super(id);
         this.args = args;
         totalTime = args.getDuration();
         this.files = new FileManager();

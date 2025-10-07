@@ -274,4 +274,7 @@ public class ByzCastMessage extends BaseObj implements Externalizable {
     public short getMinDest() {
         return getDst()[0];
     }
+    public short getLca() {
+        return getMinDest();
+    }
 }

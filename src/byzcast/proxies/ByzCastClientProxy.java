@@ -36,7 +36,7 @@ public class ByzCastClientProxy extends Node {
     short lca;
     short[] dsts;
 
-    public ByzCastClientProxy(short id, int numTree){
+    public ByzCastClientProxy(short id){
         super(id);
         outChannels = new HashMap<>();
         tree = new FileManager().loadByzCastTreeAsGraph();
@@ -47,7 +47,7 @@ public class ByzCastClientProxy extends Node {
         DOTExporter<Short, DefaultEdge> exporter = new DOTExporter<>(v->String.valueOf(v));
         Writer writer = new StringWriter();
         exporter.exportGraph(tree, writer);
-        return writer.toString();
+        return writer.toString().replaceAll("\n", " ");
     }
 
     public void connectTo(Node dest){
@@ -139,8 +139,8 @@ public class ByzCastClientProxy extends Node {
     public void receiveReply(ByzCastMessage reply){
         lock.lock();
 
-        // store latency per node in microsec
-        latsPerNode.put(reply.getSender(), ((System.nanoTime() - startTime) / 1000));
+        // store latency per node in ms
+        latsPerNode.put(reply.getSender(), ((System.currentTimeMillis() - startTime)));
 
         replies.add(reply);
 
@@ -152,12 +152,17 @@ public class ByzCastClientProxy extends Node {
     }
 
     public ByzCastMessage multicast(ByzCastMessage m){
+        // Standard multicast is for ByzCast algorithm (0)
+        return multicast(m, 0);
+    }
+
+    public ByzCastMessage multicast(ByzCastMessage m, int algo){
         replies.clear();
         expectedReplies = (short) m.getDst().length;
         latsPerNode.clear();
-        startTime = System.nanoTime();
+        startTime = System.currentTimeMillis();
         dsts = m.getDst();
-        lca = getLca(m);
+        lca = getLca(m, algo);
         send(m, lca);
         try {
             sema.acquire();
@@ -167,9 +172,13 @@ public class ByzCastClientProxy extends Node {
         return replies.get(0);
     }
 
-    public short getLca(ByzCastMessage m) {
+    public short getLca(ByzCastMessage m, int algo) {
         if(m.getDst().length == 1) return m.getDst()[0];
 
+        // Disseminator:
+        if(algo == 1) return m.getLca();
+
+        // ByzCast:
         ArrayList<Pair<Short,Short>> list = new ArrayList<>();
         for(int i = 0; i < m.getDst().length; i++){
             if((i+1) < m.getDst().length){

@@ -20,4 +20,20 @@ public class Util extends BaseObj{
         return instance;
     }
 
+    public static String convertBytes(long bytes) {
+        double kb = bytes / 1024.0;
+        double mb = kb / 1024.0;
+        double gb = mb / 1024.0;
+
+        if (gb >= 1) {
+            return String.format("%.2f GB", gb);
+        } else if (mb >= 1) {
+            return String.format("%.2f MB", mb);
+        } else if (kb >= 1) {
+            return String.format("%.2f KB", kb);
+        } else {
+            return String.format("%d Bytes", bytes);
+        }
+    }
+
 }

@@ -21,7 +21,7 @@ public abstract class ByzCastServerProxy extends ByzCastClientProxy {
     }
 
     public ByzCastServerProxy(short id, int numClients){
-        super(id, 0);
+        super(id);
         this.numClients = numClients;
         bufferQueue = new ConcurrentLinkedQueue<>();
         cliChannels = new HashMap<>();

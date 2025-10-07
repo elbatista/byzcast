@@ -1,10 +1,6 @@
 package byzcast;
 
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-import org.javatuples.Pair;
 import util.ArgsParser;
 import util.FileManager;
 import base.Host;
@@ -14,15 +10,13 @@ import byzcast.messages.LightMessage;
 import byzcast.messages.LightMessagesList;
 import byzcast.proxies.ByzCastServerProxy;
 
-public class ByzCastNode extends ByzCastServerProxy {
+public class DisseminatorNode extends ByzCastServerProxy {
     protected int numNodes;
     protected FileManager files;
     private LightMessagesList history = new LightMessagesList();
-    private List<Node> children = new ArrayList<>();
-    private ArrayList<String[]> mappings = new ArrayList<>();
-    private int msgsTotal=0, msgsToMe=0;
+    private int msgsTotal=0;
 
-    public ByzCastNode(short id, ArgsParser args){
+    public DisseminatorNode(short id, ArgsParser args){
         super(id, args.getClientCount());
         this.files = new FileManager();
         List<Node> nodes = files.loadHosts();
@@ -35,18 +29,15 @@ public class ByzCastNode extends ByzCastServerProxy {
             }
         }
         setHost(thisHost);
-        print(this, "ByzCast Node - Start listening ...");
+        print(this, "Disseminator Node - Start listening ...");
+
         // sets connection to all children nodes
-        for(Pair<Short, Short> p : files.loadByzCastTree(mappings, getId())){
-            if (p.getValue0() == getId()){
-                for(Node node : nodes){
-                    if(p.getValue1() == node.getId()){
-                        connectTo(node);
-                        children.add(node);
-                    }
-                }
+        for(Node node : nodes){
+            if(node.getId() > getId()){
+                connectTo(node);
             }
-        }        
+        }
+        
     }
 
     @Override
@@ -54,32 +45,14 @@ public class ByzCastNode extends ByzCastServerProxy {
         // print("Received message", m);
 
         msgsTotal++;
-        if(m.isAddressedTo(getId())) msgsToMe++;
 
-        Set<Short> sent = new HashSet<>();
+        // lca disseminates the message
+        if(m.getLca() == getId())
+            for(short dest : m.getDst()) if(dest != getId()) send(m, dest);
 
-        // send to its children
-        for(Node n : children){
-            if(m.isAddressedTo(n.getId())){
-                // print("Will send to child", n.getId());
-                send(m, n.getId());
-                sent.add(n.getId());
-            }
-        }
-
-        // for each mapping, send to the children in the mapping, if not sent yet
-        for(String[] map : mappings){
-            if(m.isAddressedTo(Short.valueOf(map[1])) && !sent.contains(Short.valueOf(map[2]))){
-                // print("Will send to child",Short.valueOf(map[2]), "via mapping, for node", Short.valueOf(map[1]));
-                send(m, Short.valueOf(map[2]));
-                sent.add(Short.valueOf(map[2]));
-            }
-        }
-
-        if(m.isAddressedTo(getId())){
-            deliver(m);
-            // print("Delivered message", m);
-        }
+        // all who received, deliver
+        deliver(m);
+        
     }
 
     private void deliver(ByzCastMessage m) {
@@ -100,8 +73,6 @@ public class ByzCastNode extends ByzCastServerProxy {
         print("Total msgs in the history:", history.size());
         print("Total local msgs received:", localMsgs);
         print("Total msgs received:", msgsTotal);
-        print("Total msgs to me received:", msgsToMe);
-        print("% of overhead:", 100-((msgsToMe*100)/msgsTotal));
         //printF("Avg msg size", Stats.of(getSizes()).mean());
         files.persistMsgSizes(getSizes(), getId());
         print("-------------------------------------");

@@ -14,11 +14,13 @@ import org.jgrapht.alg.lca.TarjanLCAFinder;
 import org.jgrapht.graph.DefaultEdge;
 import base.Node;
 import byzcast.messages.ByzCastMessage;
+import byzcast.messages.ByzCastMessage.TransactionType;
 import byzcast.messages.ByzCastMessage.Type;
 import byzcast.proxies.ByzCastClientProxy;
 import util.ArgsParser;
 import util.FileManager;
 import util.Stats;
+import util.Util;
 
 public class ByzCastRandomClient extends ByzCastClientProxy {
     protected ArgsParser args;
@@ -28,15 +30,18 @@ public class ByzCastRandomClient extends ByzCastClientProxy {
     protected FileManager files;
     private int [] destsSizes;
     protected final Random gen;
+    private int algo;
+    private String[] algorithm = new String[]{"ByzCast","Disseminator"};
     
     public ByzCastRandomClient(short id, ArgsParser args, boolean start){
-        super(id, args.getTree());
+        super(id);
         this.args = args;
         this.totalTime = args.getDuration();
         this.files = new FileManager();
         this.gen = new Random(System.nanoTime());
         this.clientCount = args.getClientCount();
         this.randPayloadSize = args.getRandPayloadSize();
+        this.algo = args.getAlgorithm();
         ArrayList<Node> nodes = files.loadHosts();
         syncAllConnections = new CyclicBarrier(nodes.size()+1);
         for(Node server : nodes) connectTo(server, syncAllConnections);
@@ -76,20 +81,21 @@ public class ByzCastRandomClient extends ByzCastClientProxy {
         sendReadyMessage();
 
         print("All other clients ready!");
-        print("Started AWS ByzCastRandomClient experiment");
+        print("Started AWS ByzCastRandomClient experiment (", algorithm[algo],")");
+        print("Rand payload size:", Util.convertBytes(randPayloadSize));
 
         stats = new Stats(totalTime, numNodes);
 
         long startTime = System.currentTimeMillis(), elapsed = 0, now;
         int totalMsgs = 0;
 
-        while ((elapsed / 1e9) < totalTime) {
+        while ((elapsed / 1000) < totalTime) {
             ByzCastMessage m = newMessage();
             
             generatePayload(m);
 
             now = System.currentTimeMillis();
-            multicast(m);
+            multicast(m, algo);
             stats.store((System.currentTimeMillis() - now), (m.getDst().length > 1));
             
             elapsed = (now - startTime);
@@ -111,11 +117,12 @@ public class ByzCastRandomClient extends ByzCastClientProxy {
 
         for(int i = 0; i < destsSizes.length; i++) print("# of msgs to", i+1, "dests:", destsSizes[i]);
 
-        print("Finished AWS ByzCastRandomClient experiment. Elapsed: ", elapsed / 1e9, "seconds");
+        print("Finished AWS ByzCastRandomClient experiment. Elapsed: ", elapsed / 1000, "seconds");
         exit();
     }
 
     private void generatePayload(ByzCastMessage m) {
+        m.setTransaction(TransactionType.NOPAYLOAD);
         byte[] payload = new byte[randPayloadSize];
         if (randPayloadSize > 0) {
             gen.nextBytes(payload);
@@ -128,7 +135,7 @@ public class ByzCastRandomClient extends ByzCastClientProxy {
     private ByzCastMessage newMessage(){
         ByzCastMessage m = new ByzCastMessage(nextSeqNumber());
         m.setType(Type.MSG);
-        m.setDst(generateRandDests());
+        m.setDst(generateMaxXDests(4));
         m.setCliId(getId());
         return m;
     }
@@ -136,6 +143,20 @@ public class ByzCastRandomClient extends ByzCastClientProxy {
     private short[] generateRandDests() {
         Set<Short> uniqueNumbers = new HashSet<>();
         int size = randomNumber(2, numNodes, gen); // only global
+        while (uniqueNumbers.size() < size)
+            uniqueNumbers.add((short)randomNumber(0, numNodes-1, gen));
+        short [] tempdst = new short[size];
+        short i = 0;
+        for(short u : uniqueNumbers.stream().sorted().collect(Collectors.toList())){
+            tempdst[i] = u;
+            i++;
+        }
+        return tempdst;
+    }
+
+    private short[] generateMaxXDests(int X) {
+        Set<Short> uniqueNumbers = new HashSet<>();
+        int size = randomNumber(2, X, gen); // only global
         while (uniqueNumbers.size() < size)
             uniqueNumbers.add((short)randomNumber(0, numNodes-1, gen));
         short [] tempdst = new short[size];
