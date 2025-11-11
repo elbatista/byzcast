@@ -17,8 +17,6 @@ import java.util.Scanner;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.concurrent.TimeUnit;
-import com.google.common.math.Quantiles;
-import com.google.common.math.Stats;
 
 @SuppressWarnings("unused")
 public class Results {

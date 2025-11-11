@@ -18,6 +18,7 @@ import org.jgrapht.alg.lca.TarjanLCAFinder;
 import org.jgrapht.graph.DefaultEdge;
 import base.Node;
 import byzcast.messages.ByzCastMessage;
+import byzcast.messages.ByzCastMessage.Split;
 import byzcast.messages.ByzCastMessage.Type;
 import byzcast.proxies.ByzCastClientProxy;
 // import flexcast.messages.Message;

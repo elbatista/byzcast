@@ -16,6 +16,7 @@ import org.jgrapht.nio.dot.DOTExporter;
 import base.Node;
 import byzcast.comms.ByzCastNettyClientChannel;
 import byzcast.messages.ByzCastMessage;
+import byzcast.messages.ByzCastMessage.Split;
 import byzcast.messages.ByzCastMessage.Type;
 import io.netty.channel.Channel;
 import util.FileManager;
@@ -171,7 +172,7 @@ public class ByzCastClientProxy extends Node {
         }
         return replies.get(0);
     }
-
+    //Pegar ESSE LCA
     public short getLca(ByzCastMessage m, int algo) {
         if(m.getDst().length == 1) return m.getDst()[0];
 

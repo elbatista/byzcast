@@ -16,6 +16,7 @@ import base.Node;
 import byzcast.messages.ByzCastMessage;
 import byzcast.messages.ByzCastMessage.TransactionType;
 import byzcast.messages.ByzCastMessage.Type;
+import byzcast.messages.ByzCastMessage.Split;
 import byzcast.proxies.ByzCastClientProxy;
 import util.ArgsParser;
 import util.FileManager;

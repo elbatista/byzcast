@@ -16,8 +16,10 @@ import util.OrderItem;
 public class ByzCastMessage extends BaseObj implements Externalizable {
     public enum Type {MSG, CONN, REPLY, END, READY}
     public enum TransactionType {NEW, PAYMENT, STATUS, DELIVERY, STOCK, NOPAYLOAD}
+    public enum Split {NEW, ORD, PAY}
     private short sender = -1;
     private int id = -1, cliId = -1;
+    private Split split = Split.NEW;
     private Type type;
     private short [] dst;
     private byte[] randPayload;
@@ -96,6 +98,16 @@ public class ByzCastMessage extends BaseObj implements Externalizable {
         this.type = type;
     }
 
+
+    public Split getSplit() {
+        return split;
+    }
+
+    public void setSplit(Split split) {
+        this.split = split;
+    }
+
+
     public short getSender() {
         return sender;
     }
@@ -144,6 +156,12 @@ public class ByzCastMessage extends BaseObj implements Externalizable {
     public void writeExternal(ObjectOutput out) throws IOException {
         out.writeInt(this.id);
         out.writeInt(this.cliId);
+        //Aqui escrever 0 - ORD ou 1 - PAY
+        switch(this.split){
+            case NEW: out.writeInt(0); break;
+            case ORD: out.writeInt(1); break;
+            case PAY: out.writeInt(2); break;
+        }
         switch(this.type){
             case MSG: out.writeByte(0); writeExtPayload(out); break;
             case CONN: out.writeByte(3); break;
@@ -209,6 +227,12 @@ public class ByzCastMessage extends BaseObj implements Externalizable {
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         this.id = in.readInt();
         this.cliId = in.readInt();
+        //Aqui fazer a função inversa, switch
+        switch(in.readInt()){
+            case 0: this.split = Split.NEW; break;
+            case 1: this.split = Split.ORD; break;
+            case 2: this.split = Split.PAY; break;
+        }
         switch(in.readByte()){
             case 0: this.type = Type.MSG; readExtPayload(in); break;
             case 3: this.type = Type.CONN; break;
@@ -276,5 +300,32 @@ public class ByzCastMessage extends BaseObj implements Externalizable {
     }
     public short getLca() {
         return getMinDest();
+    }
+
+    public ByzCastMessage cloneMessage(ByzCastMessage m) {
+        ByzCastMessage copy = new ByzCastMessage(m.getId()); //Ficar de olho aqui
+    
+        copy.setType(m.getType());
+        copy.setCliId(m.getCliId());
+        copy.setSender(m.getSender());
+        copy.setSplit(m.getSplit());
+        copy.setRandPayload(m.getRandPayload() != null ? m.getRandPayload() : new byte[1]);
+        copy.setTransaction(m.getTransaction());
+        copy.setDst(m.getDst());
+        copy.items = new ArrayList<>(m.getItems());
+        return copy;
+    }
+    
+
+    public ByzCastMessage splitSelf(ByzCastMessage m) {
+        //System.out.println("Splitting message id=" + m.getId());
+    
+        ByzCastMessage msgO = cloneMessage(m);
+    
+        msgO.setRandPayload(new byte[1]); // dummy payload
+        msgO.setSplit(Split.ORD);
+
+    
+        return msgO;
     }
 }
