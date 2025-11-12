@@ -16,11 +16,11 @@ import org.jgrapht.nio.dot.DOTExporter;
 import base.Node;
 import byzcast.comms.ByzCastNettyClientChannel;
 import byzcast.messages.ByzCastMessage;
-import byzcast.messages.ByzCastMessage.Split;
 import byzcast.messages.ByzCastMessage.Type;
 import io.netty.channel.Channel;
 import util.FileManager;
 import util.Stats;
+
 
 public class ByzCastClientProxy extends Node {
     private HashMap<Short, Channel> outChannels;
@@ -117,6 +117,7 @@ public class ByzCastClientProxy extends Node {
     }
 
     public void send(ByzCastMessage m, short dst){
+        // print(m.getId(), Arrays.toString(m.getDst()));
         try {
             outChannels.get(dst).writeAndFlush(m);
         }

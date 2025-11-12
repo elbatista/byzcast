@@ -16,7 +16,7 @@ import util.OrderItem;
 public class ByzCastMessage extends BaseObj implements Externalizable {
     public enum Type {MSG, CONN, REPLY, END, READY}
     public enum TransactionType {NEW, PAYMENT, STATUS, DELIVERY, STOCK, NOPAYLOAD}
-    public enum Split {NEW, ORD, PAY}
+    public enum Split {NEW, ORD, PAY, COMP}
     private short sender = -1;
     private int id = -1, cliId = -1;
     private Split split = Split.NEW;
@@ -161,6 +161,7 @@ public class ByzCastMessage extends BaseObj implements Externalizable {
             case NEW: out.writeInt(0); break;
             case ORD: out.writeInt(1); break;
             case PAY: out.writeInt(2); break;
+            case COMP: out.writeInt(3); break;
         }
         switch(this.type){
             case MSG: out.writeByte(0); writeExtPayload(out); break;
@@ -232,6 +233,7 @@ public class ByzCastMessage extends BaseObj implements Externalizable {
             case 0: this.split = Split.NEW; break;
             case 1: this.split = Split.ORD; break;
             case 2: this.split = Split.PAY; break;
+            case 3: this.split = Split.COMP; break;
         }
         switch(in.readByte()){
             case 0: this.type = Type.MSG; readExtPayload(in); break;

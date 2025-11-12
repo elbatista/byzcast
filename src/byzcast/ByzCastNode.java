@@ -1,22 +1,26 @@
 package byzcast;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.javatuples.Pair;
 import org.jgrapht.alg.lca.TarjanLCAFinder;
 import org.jgrapht.graph.DefaultEdge;
-
 import util.ArgsParser;
 import util.FileManager;
 import base.Host;
 import base.Node;
+import java.lang.Long;
 import byzcast.messages.ByzCastMessage.Split;
 import byzcast.messages.ByzCastMessage;
 import byzcast.messages.LightMessage;
 import byzcast.messages.LightMessagesList;
 import byzcast.proxies.ByzCastServerProxy;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ByzCastNode extends ByzCastServerProxy {
     protected int numNodes;
@@ -25,7 +29,11 @@ public class ByzCastNode extends ByzCastServerProxy {
     private List<Node> children = new ArrayList<>();
     private List<Node> connected = new ArrayList<>();
     private ArrayList<String[]> mappings = new ArrayList<>();
-    private int msgsTotal=0, msgsToMe=0, testO=0, testP=0,testX=0;
+    private int msgsTotal=0, msgsToMe=0, testO=0, testP=0;
+    private BlockingQueue<ByzCastMessage> ordQueue = new LinkedBlockingQueue<>();
+    private ConcurrentHashMap<Long, ByzCastMessage> payloads = new ConcurrentHashMap<>();
+
+    private volatile boolean running = true;
 
     public ByzCastNode(short id, ArgsParser args){
         super(id, args.getClientCount());
@@ -35,6 +43,8 @@ public class ByzCastNode extends ByzCastServerProxy {
         Host thisHost = null;
         short root = nodes.get(0).getId();
         lcafinder = new TarjanLCAFinder<Short,DefaultEdge>(tree, root);
+        startDeliveryThread();
+        
         for(Node n : nodes){
             if(n.getId() == id){
                 thisHost = n.getHost();
@@ -65,45 +75,17 @@ public class ByzCastNode extends ByzCastServerProxy {
 
     @Override
     protected void receiveMsg(ByzCastMessage m){
-
-        if(m.getSplit() == Split.ORD){
-            if(testO < 10){
-                print("Got my Order Split from");
-                print(m.getId());
-                print(getLca(m,0));
-                testO++;
-            }
-        }
-
-        if(m.getSplit() == Split.PAY){
-            if(testP < 10){
-                print("Got my Payload Split from");
-                print(m.getId());
-                print(getLca(m,0));
-                print(m.getDst());
-                testP++;
-            }
-        }
-
         ByzCastMessage payloadMsg;
         msgsTotal++;
         if(m.isAddressedTo(getId())) msgsToMe++;
 
-        Set<Short> sent = new HashSet<>();
+        if (m.getSplit() == Split.ORD && m.isAddressedTo(getId())) {
+            ordQueue.add(m);
+        } else if (m.getSplit() == Split.PAY) {
+            payloads.put(Long.valueOf(m.getId()), m);
+        }
 
-        // //Conferir se é o LCA
-        // if (getId() == getLca(m,0) && testO < 10){
-        //     print("Im the LCA!");
-        //     testO++;
-        // }
-        // else{
-        //     if(testO < 10){
-        //         print("Im the not the LCA!");
-        //         print(String.valueOf(getId()));
-        //         print(String.valueOf(getLca(m,0)));
-        //         testO++;
-        //     }
-        // }
+        Set<Short> sent = new HashSet<>();
 
         if (getId() == getLca(m,0)){
             //Caso seja, separa payload de msg Ordem
@@ -118,6 +100,12 @@ public class ByzCastNode extends ByzCastServerProxy {
                 if(payloadMsg.isAddressedTo(n.getId())){
                     send(payloadMsg, n.getId());
                 }
+            }
+
+            if(m.isAddressedTo(getId())){
+                deliver(m);
+                // print("LCA Delivered!");
+                // print(m.getId(), Arrays.toString(m.getDst()));
             }
         }
 
@@ -138,29 +126,52 @@ public class ByzCastNode extends ByzCastServerProxy {
             }
         }
 
-        //     // send to its children
-        //     for(Node n : children){
-        //         if(m.isAddressedTo(n.getId())){
-        //             // print("Will send to child", n.getId());
-        //             send(m, n.getId());
-        //             sent.add(n.getId());
-        //         }
-        //     }
-
-        //     // for each mapping, send to the children in the mapping, if not sent yet
-        //     for(String[] map : mappings){
-        //         if(m.isAddressedTo(Short.valueOf(map[1])) && !sent.contains(Short.valueOf(map[2]))){
-        //             // print("Will send to child",Short.valueOf(map[2]), "via mapping, for node", Short.valueOf(map[1]));
-        //             send(m, Short.valueOf(map[2]));
-        //             sent.add(Short.valueOf(map[2]));
-        //         }
-        //     }
+        // if(m.isAddressedTo(getId()) && m.getSplit() == Split.ORD){
+        //     deliver(m);
+        //     // print("Delivered message", m);
         // }
+    }
 
-        if(m.isAddressedTo(getId())){
-            deliver(m);
-            // print("Delivered message", m);
-        }
+    private void startDeliveryThread() {
+        Thread deliveryThread = new Thread(() -> {
+            try {
+                while (running) {
+                    // pega próxima mensagem de ordem da fila (bloqueia se estiver vazia)
+                    ByzCastMessage ordMsg = ordQueue.take();
+    
+                    long msgId = ordMsg.getId();
+    
+                    // espera até o payload correspondente chegar
+                    ByzCastMessage payMsg = null;
+                    while (running && payMsg == null) {
+                        payMsg = payloads.remove(msgId);
+                        // print(msgId);
+                        // print(payloads);
+                        if (payMsg == null) {
+                            Thread.sleep(10); // espera um pouco antes de tentar de novo
+                        }
+                    }
+    
+                    // quando as duas chegaram:
+                    if (ordMsg.isAddressedTo(getId())) {
+                        deliver(ordMsg, payMsg);
+                    }
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+    
+        deliveryThread.start();
+    }
+    
+
+    private void deliver(ByzCastMessage ordMsg, ByzCastMessage payMsg) {
+        // Combina as informações se quiser
+        history.add(new LightMessage(ordMsg.getId(), ordMsg.getDst()));
+        sendReply(ordMsg);
+        // print("Delivered message with ID", ordMsg.getId(), " (ORD + PAY)");
+        // print(Arrays.toString(ordMsg.getDst()));
     }
 
     private void deliver(ByzCastMessage m) {
