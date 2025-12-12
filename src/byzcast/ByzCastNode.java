@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import org.javatuples.Pair;
 import org.jgrapht.alg.lca.TarjanLCAFinder;
@@ -21,9 +22,12 @@ import byzcast.proxies.ByzCastServerProxy;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.PriorityQueue;
+
 
 public class ByzCastNode extends ByzCastServerProxy {
     protected int numNodes;
+    protected final Random gen;
     protected FileManager files;
     private LightMessagesList history = new LightMessagesList();
     private List<Node> children = new ArrayList<>();
@@ -32,18 +36,20 @@ public class ByzCastNode extends ByzCastServerProxy {
     private int msgsTotal=0, msgsToMe=0, testO=0, testP=0;
     private BlockingQueue<ByzCastMessage> ordQueue = new LinkedBlockingQueue<>();
     private ConcurrentHashMap<Long, ByzCastMessage> payloads = new ConcurrentHashMap<>();
+    PriorityQueue<Long> paired = new PriorityQueue<>();
 
     private volatile boolean running = true;
 
     public ByzCastNode(short id, ArgsParser args){
         super(id, args.getClientCount());
         this.files = new FileManager();
+        this.gen = new Random(System.nanoTime());
         List<Node> nodes = files.loadHosts();
         numNodes = nodes.size();
         Host thisHost = null;
         short root = nodes.get(0).getId();
         lcafinder = new TarjanLCAFinder<Short,DefaultEdge>(tree, root);
-        startDeliveryThread();
+        //startDeliveryThread();
         
         for(Node n : nodes){
             if(n.getId() == id){
@@ -79,23 +85,18 @@ public class ByzCastNode extends ByzCastServerProxy {
         msgsTotal++;
         if(m.isAddressedTo(getId())) msgsToMe++;
 
-        if (m.getSplit() == Split.ORD && m.isAddressedTo(getId())) {
-            ordQueue.add(m);
-        } else if (m.getSplit() == Split.PAY) {
-            payloads.put(Long.valueOf(m.getId()), m);
-        }
-
         Set<Short> sent = new HashSet<>();
 
         if (getId() == getLca(m,0)){
             //Caso seja, separa payload de msg Ordem
             // separar a msg na normal e em uma que é só o payload (sabe o id da de Ordem) -> randPayload
 
-            payloadMsg = m.cloneMessage(m);
+            payloadMsg = m.cloneMessage(m, false);
             payloadMsg.setSplit(Split.PAY);
+            
             m = m.splitSelf(m);
 
-            //Encaminha msg DEST para os destinos conforme a árvore
+            //Encaminha msg PAY para os destinos conforme a árvore
             for(Node n : connected){
                 if(payloadMsg.isAddressedTo(n.getId())){
                     send(payloadMsg, n.getId());
@@ -106,6 +107,22 @@ public class ByzCastNode extends ByzCastServerProxy {
                 deliver(m);
                 // print("LCA Delivered!");
                 // print(m.getId(), Arrays.toString(m.getDst()));
+            }
+        }
+
+        if (m.getSplit() == Split.ORD && m.isAddressedTo(getId()) && getId() != getLca(m,0)) {
+            ordQueue.add(m);
+            try {
+                messageMatcher(m.getId(),true);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        } else if (m.getSplit() == Split.PAY) {
+            payloads.put(Long.valueOf(m.getId()), m);
+            try {
+                messageMatcher(m.getId(),false);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
 
@@ -132,38 +149,107 @@ public class ByzCastNode extends ByzCastServerProxy {
         // }
     }
 
-    private void startDeliveryThread() {
-        Thread deliveryThread = new Thread(() -> {
-            try {
-                while (running) {
-                    // pega próxima mensagem de ordem da fila (bloqueia se estiver vazia)
-                    ByzCastMessage ordMsg = ordQueue.take();
-    
-                    long msgId = ordMsg.getId();
-    
-                    // espera até o payload correspondente chegar
-                    ByzCastMessage payMsg = null;
-                    while (running && payMsg == null) {
-                        payMsg = payloads.remove(msgId);
-                        // print(msgId);
-                        // print(payloads);
-                        if (payMsg == null) {
-                            Thread.sleep(10); // espera um pouco antes de tentar de novo
+    private void messageMatcher(long msgID, boolean isOrd) throws InterruptedException{
+
+        ByzCastMessage msg = null;
+        ByzCastMessage match = null;
+
+        // long msgID = msg.getId();
+        System.out.println("Fila ord:" + ordQueue);
+        System.out.println("Fila pay:" + payloads);
+        System.out.println("Fila paired:" + paired);
+        System.out.println("Msg ID:" + msgID);
+        System.out.println("Is Ord:" + isOrd);
+       
+        //Caso seja de ordem, tenta fazer match com a mensagem de payload correspondente
+        if(isOrd){
+            match = payloads.remove(msgID);
+            if(match != null){
+                // achou a mensagem de payload correspondente
+                if (ordQueue.peek().getId() == msgID){
+                    // faz deliver e confere se a proxima da fila de ordem já está paired
+                    msg = ordQueue.take();
+                    deliver(msg, match);
+                    if(!paired.isEmpty()){
+                        deliverPaired();
+                    }
+                } else {
+                    // adiciona no paired caso não seja a proxima na ordem
+                    paired.add(msgID);
+                }
+            }
+        } else {
+            //Caso seja de payload, tenta fazer match com a mensagem de ordem no começo da fila
+            if(!ordQueue.isEmpty()){
+                if (ordQueue.peek().getId() == msgID){
+                    // faz deliver e confere se a proxima da fila de ordem já está paired
+                    msg = ordQueue.take();
+                    match = payloads.remove(msgID);
+                    deliver(msg, match);
+                    if(!paired.isEmpty()){
+                        deliverPaired();
+                    }
+                
+                } else {
+                    for (ByzCastMessage message : ordQueue){
+                        if(message.getId() == msgID){
+                            paired.add(msgID);
                         }
                     }
-    
-                    // quando as duas chegaram:
-                    if (ordMsg.isAddressedTo(getId())) {
-                        deliver(ordMsg, payMsg);
-                    }
                 }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
             }
-        });
-    
-        deliveryThread.start();
+        }
     }
+
+    private void deliverPaired() throws InterruptedException{
+        ByzCastMessage msg = null;
+        ByzCastMessage match = null;
+        Boolean loop = true;
+
+        while(loop){
+            if(paired.peek() == ordQueue.peek().getId()){
+                long msgID = paired.remove();
+                msg = ordQueue.take();
+                match = payloads.remove(msgID); 
+                deliver(msg, match);
+            } else {
+                loop = false;
+            }
+        loop = false;
+        }
+    }
+
+    // private void startDeliveryThread() {
+    //     Thread deliveryThread = new Thread(() -> {
+    //         try {
+    //             while (running) {
+    //                 // pega próxima mensagem de ordem da fila (bloqueia se estiver vazia)
+    //                 ByzCastMessage ordMsg = ordQueue.take();
+    
+    //                 long msgId = ordMsg.getId();
+    
+    //                 // espera até o payload correspondente chegar
+    //                 ByzCastMessage payMsg = null;
+                    
+    //                 while (running && payMsg == null) {
+    //                     payMsg = payloads.remove(msgId);
+    //                     if (payMsg == null) {
+    //                         Thread.sleep(10); // espera um pouco antes de tentar de novo
+    //                     }
+    //                 }
+    
+    //                 // quando as duas chegaram:
+    //                 if (ordMsg.isAddressedTo(getId())) {
+    //                     deliver(ordMsg, payMsg);
+    //                 }
+    //             }
+    //         } catch (InterruptedException e) {
+    //             Thread.currentThread().interrupt();
+    //         }
+    //     });
+    
+    //     deliveryThread.start();
+    // }
     
 
     private void deliver(ByzCastMessage ordMsg, ByzCastMessage payMsg) {

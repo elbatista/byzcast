@@ -182,6 +182,13 @@ public class ByzCastMessage extends BaseObj implements Externalizable {
     }
 
     private void writeExtPayload(ObjectOutput out) throws IOException{
+        // if(randPayload != null) {
+        //     System.out.println("[DEBUG writeExternal] ID=" + id + 
+        //         " writing randPayload.size=" + randPayload.length);
+        // } else {
+        //     System.out.println("[DEBUG writeExternal] ID=" + id + 
+        //         " writing randPayload=null");
+        // }
         if(randPayload != null && randPayload.length > 0) {
             out.writeInt(randPayload.length);
             out.write(randPayload);
@@ -252,7 +259,6 @@ public class ByzCastMessage extends BaseObj implements Externalizable {
     }
 
     private void readExtPayload(ObjectInput in) throws IOException {
-
         int randPayloadSize = in.readInt();
         if(randPayloadSize > 0) {
             this.randPayload = new byte[randPayloadSize];
@@ -261,6 +267,7 @@ public class ByzCastMessage extends BaseObj implements Externalizable {
             this.randPayload = null;
         }
 
+        //System.out.println("[DEBUG readExternal] ID=" + id + " received randPayload.size=" + randPayloadSize);
         short transtype = in.readByte();
         switch(transtype){
             case 10: setTransaction(TransactionType.NOPAYLOAD); return;
@@ -304,14 +311,15 @@ public class ByzCastMessage extends BaseObj implements Externalizable {
         return getMinDest();
     }
 
-    public ByzCastMessage cloneMessage(ByzCastMessage m) {
+    public ByzCastMessage cloneMessage(ByzCastMessage m, boolean copyPay) {
         ByzCastMessage copy = new ByzCastMessage(m.getId()); //Ficar de olho aqui
     
         copy.setType(m.getType());
         copy.setCliId(m.getCliId());
         copy.setSender(m.getSender());
         copy.setSplit(m.getSplit());
-        copy.setRandPayload(m.getRandPayload() != null ? m.getRandPayload() : new byte[1]);
+        //copy.setRandPayload(new byte[1]);
+        copy.setRandPayload(copyPay == true ? Arrays.copyOf(m.getRandPayload(), m.getRandPayload().length) : new byte[1]);
         copy.setTransaction(m.getTransaction());
         copy.setDst(m.getDst());
         copy.items = new ArrayList<>(m.getItems());
@@ -322,9 +330,9 @@ public class ByzCastMessage extends BaseObj implements Externalizable {
     public ByzCastMessage splitSelf(ByzCastMessage m) {
         //System.out.println("Splitting message id=" + m.getId());
     
-        ByzCastMessage msgO = cloneMessage(m);
+        ByzCastMessage msgO = cloneMessage(m,false);
     
-        msgO.setRandPayload(new byte[1]); // dummy payload
+        //msgO.setRandPayload(new byte[1]); // dummy payload
         msgO.setSplit(Split.ORD);
 
     
