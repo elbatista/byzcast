@@ -327,15 +327,10 @@ public class ByzCastMessage extends BaseObj implements Externalizable {
     }
     
 
-    public ByzCastMessage splitSelf(ByzCastMessage m) {
+    public ByzCastMessage setToOrder(ByzCastMessage m) {
         //System.out.println("Splitting message id=" + m.getId());
-    
-        ByzCastMessage msgO = cloneMessage(m,false);
-    
-        //msgO.setRandPayload(new byte[1]); // dummy payload
-        msgO.setSplit(Split.ORD);
-
-    
-        return msgO;
+        m.setRandPayload(new byte[1]);
+        m.setSplit(Split.ORD);
+        return m;
     }
 }

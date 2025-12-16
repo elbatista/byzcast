@@ -36,7 +36,7 @@ public class ByzCastNode extends ByzCastServerProxy {
     private int msgsTotal=0, msgsToMe=0, testO=0, testP=0;
     private BlockingQueue<ByzCastMessage> ordQueue = new LinkedBlockingQueue<>();
     private ConcurrentHashMap<Long, ByzCastMessage> payloads = new ConcurrentHashMap<>();
-    PriorityQueue<Long> paired = new PriorityQueue<>();
+    private BlockingQueue<Long> paired = new LinkedBlockingQueue<>();
 
     private volatile boolean running = true;
 
@@ -91,14 +91,16 @@ public class ByzCastNode extends ByzCastServerProxy {
             //Caso seja, separa payload de msg Ordem
             // separar a msg na normal e em uma que é só o payload (sabe o id da de Ordem) -> randPayload
 
-            payloadMsg = m.cloneMessage(m, false);
+            payloadMsg = m.cloneMessage(m, false); //arrumar
             payloadMsg.setSplit(Split.PAY);
             
-            m = m.splitSelf(m);
+            m = m.setToOrder(m);
 
-            //Encaminha msg PAY para os destinos conforme a árvore
+            //Encaminha msg PAY para os destinos conforme a árvore ✅
             for(Node n : connected){
                 if(payloadMsg.isAddressedTo(n.getId())){
+                    // print(payloadMsg);
+                    // print(n.getId());
                     send(payloadMsg, n.getId());
                 }
             }
@@ -117,7 +119,7 @@ public class ByzCastNode extends ByzCastServerProxy {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-        } else if (m.getSplit() == Split.PAY) {
+        } else if (m.getSplit() == Split.PAY && m.isAddressedTo(getId())) {
             payloads.put(Long.valueOf(m.getId()), m);
             try {
                 messageMatcher(m.getId(),false);
@@ -126,17 +128,17 @@ public class ByzCastNode extends ByzCastServerProxy {
             }
         }
 
-        // envia msg de Ordem
+        // envia msg de Ordem ✅
         for(Node n : children){
-            if(m.isAddressedTo(n.getId())){
-                send(m, n.getId());
+            if(m.isAddressedTo(n.getId()) && m.getSplit() == Split.ORD){
+                send(m, n.getId()); 
                 sent.add(n.getId());
             }
         }
 
         // for each mapping, send to the children in the mapping, if not sent yet
         for(String[] map : mappings){
-            if(m.isAddressedTo(Short.valueOf(map[1])) && !sent.contains(Short.valueOf(map[2]))){
+            if(m.isAddressedTo(Short.valueOf(map[1])) && !sent.contains(Short.valueOf(map[2])) && m.getSplit() == Split.ORD){
                 // print("Will send to child",Short.valueOf(map[2]), "via mapping, for node", Short.valueOf(map[1]));
                 send(m, Short.valueOf(map[2]));
                 sent.add(Short.valueOf(map[2]));
@@ -155,11 +157,11 @@ public class ByzCastNode extends ByzCastServerProxy {
         ByzCastMessage match = null;
 
         // long msgID = msg.getId();
-        System.out.println("Fila ord:" + ordQueue);
-        System.out.println("Fila pay:" + payloads);
-        System.out.println("Fila paired:" + paired);
-        System.out.println("Msg ID:" + msgID);
-        System.out.println("Is Ord:" + isOrd);
+        // System.out.println("Fila ord:" + ordQueue);
+        // System.out.println("Fila pay:" + payloads);
+        // System.out.println("Fila paired:" + paired);
+        // System.out.println("Msg ID:" + msgID);
+        // System.out.println("Is Ord:" + isOrd);
        
         //Caso seja de ordem, tenta fazer match com a mensagem de payload correspondente
         if(isOrd){
@@ -170,11 +172,12 @@ public class ByzCastNode extends ByzCastServerProxy {
                     // faz deliver e confere se a proxima da fila de ordem já está paired
                     msg = ordQueue.take();
                     deliver(msg, match);
-                    if(!paired.isEmpty()){
+                    if(!paired.isEmpty() && !ordQueue.isEmpty()){
                         deliverPaired();
                     }
                 } else {
-                    // adiciona no paired caso não seja a proxima na ordem
+                    // devolve payload pra lista e adiciona no paired caso não seja a proxima na ordem
+                    payloads.put(msgID, match);
                     paired.add(msgID);
                 }
             }
@@ -186,7 +189,7 @@ public class ByzCastNode extends ByzCastServerProxy {
                     msg = ordQueue.take();
                     match = payloads.remove(msgID);
                     deliver(msg, match);
-                    if(!paired.isEmpty()){
+                    if(!paired.isEmpty() && !ordQueue.isEmpty()){
                         deliverPaired();
                     }
                 
@@ -207,15 +210,18 @@ public class ByzCastNode extends ByzCastServerProxy {
         Boolean loop = true;
 
         while(loop){
-            if(paired.peek() == ordQueue.peek().getId()){
-                long msgID = paired.remove();
-                msg = ordQueue.take();
-                match = payloads.remove(msgID); 
-                deliver(msg, match);
-            } else {
+            if(paired.isEmpty() || ordQueue.isEmpty()){
                 loop = false;
+            } else {
+                if(paired.peek() == ordQueue.peek().getId()){
+                    long msgID = paired.remove();
+                    msg = ordQueue.take();
+                    match = payloads.remove(msgID); 
+                    deliver(msg, match);
+                } else {
+                    loop = false;
+                }
             }
-        loop = false;
         }
     }
 
