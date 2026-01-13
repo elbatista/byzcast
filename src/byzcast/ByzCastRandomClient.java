@@ -71,7 +71,7 @@ public class ByzCastRandomClient extends ByzCastClientProxy {
             print("Failed to wait for all server connections to complete");
             exit();
         }
-        
+        sleep(2000);
         // send initialization message to all servers
         // so they can save the connections to each client
         sendInitMessage();
@@ -136,7 +136,8 @@ public class ByzCastRandomClient extends ByzCastClientProxy {
     private ByzCastMessage newMessage(){
         ByzCastMessage m = new ByzCastMessage(nextSeqNumber());
         m.setType(Type.MSG);
-        m.setDst(generateMaxXDests(4));
+        //m.setDst(generateMaxXDests(4));
+        m.setDst(new short[] {0});
         m.setCliId(getId());
         return m;
     }

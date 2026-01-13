@@ -22,7 +22,6 @@ import byzcast.proxies.ByzCastServerProxy;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.PriorityQueue;
 
 
 public class ByzCastNode extends ByzCastServerProxy {
@@ -33,12 +32,12 @@ public class ByzCastNode extends ByzCastServerProxy {
     private List<Node> children = new ArrayList<>();
     private List<Node> connected = new ArrayList<>();
     private ArrayList<String[]> mappings = new ArrayList<>();
-    private int msgsTotal=0, msgsToMe=0, testO=0, testP=0;
+    private int msgsTotal=0, msgsToMe=0;
     private BlockingQueue<ByzCastMessage> ordQueue = new LinkedBlockingQueue<>();
     private ConcurrentHashMap<Long, ByzCastMessage> payloads = new ConcurrentHashMap<>();
     private BlockingQueue<Long> paired = new LinkedBlockingQueue<>();
 
-    private volatile boolean running = true;
+    //private volatile boolean running = true;
 
     public ByzCastNode(short id, ArgsParser args){
         super(id, args.getClientCount());
@@ -81,6 +80,9 @@ public class ByzCastNode extends ByzCastServerProxy {
 
     @Override
     protected void receiveMsg(ByzCastMessage m){
+
+        print("Got msg");
+
         ByzCastMessage payloadMsg;
         msgsTotal++;
         if(m.isAddressedTo(getId())) msgsToMe++;
@@ -91,7 +93,7 @@ public class ByzCastNode extends ByzCastServerProxy {
             //Caso seja, separa payload de msg Ordem
             // separar a msg na normal e em uma que é só o payload (sabe o id da de Ordem) -> randPayload
 
-            payloadMsg = m.cloneMessage(m, false); //arrumar
+            payloadMsg = m.cloneMessage(m, true); //arrumar
             payloadMsg.setSplit(Split.PAY);
             
             m = m.setToOrder(m);
@@ -179,6 +181,9 @@ public class ByzCastNode extends ByzCastServerProxy {
                     // devolve payload pra lista e adiciona no paired caso não seja a proxima na ordem
                     payloads.put(msgID, match);
                     paired.add(msgID);
+                    // if(!ordQueue.isEmpty()){
+                    //     deliverPaired();
+                    // }
                 }
             }
         } else {
@@ -197,6 +202,9 @@ public class ByzCastNode extends ByzCastServerProxy {
                     for (ByzCastMessage message : ordQueue){
                         if(message.getId() == msgID){
                             paired.add(msgID);
+                            // if(!ordQueue.isEmpty()){
+                            //     deliverPaired();
+                            // }
                         }
                     }
                 }
@@ -208,17 +216,43 @@ public class ByzCastNode extends ByzCastServerProxy {
         ByzCastMessage msg = null;
         ByzCastMessage match = null;
         Boolean loop = true;
+        Long msgID = Long.valueOf(0);
 
         while(loop){
             if(paired.isEmpty() || ordQueue.isEmpty()){
                 loop = false;
             } else {
                 if(paired.peek() == ordQueue.peek().getId()){
-                    long msgID = paired.remove();
+                    msgID = paired.remove();
                     msg = ordQueue.take();
                     match = payloads.remove(msgID); 
                     deliver(msg, match);
                 } else {
+                    //Se tem algo na fila de ordem e paired, é possível que 
+                    //as filas tenham se descincronizado, então é necessário 
+                    //procurar os "paired" com base na ordem de chegada
+                    if(!ordQueue.isEmpty()){
+                        msgID = Long.valueOf(ordQueue.peek().getId());
+                        match = payloads.remove(msgID);
+                        // print("got here!");
+                        // print(ordQueue);
+                        // print(match);
+                        // print(msgID);
+                    }
+                    while(match != null){
+                        paired.remove(msgID);
+                        msg = ordQueue.take();
+                        deliver(msg, match);
+
+                        // print("delivery made!");
+                        if(!ordQueue.isEmpty()){
+                            msgID = Long.valueOf(ordQueue.peek().getId());
+                            match = payloads.remove(msgID);
+                        } else {
+                            match = null;
+                        }
+                    }
+                    // print("got out!");
                     loop = false;
                 }
             }
@@ -285,7 +319,7 @@ public class ByzCastNode extends ByzCastServerProxy {
         print("Total local msgs received:", localMsgs);
         print("Total msgs received:", msgsTotal);
         print("Total msgs to me received:", msgsToMe);
-        print("% of overhead:", 100-((msgsToMe*100)/msgsTotal));
+        //print("% of overhead:", 100-((msgsToMe*100)/msgsTotal));
         //printF("Avg msg size", Stats.of(getSizes()).mean());
         files.persistMsgSizes(getSizes(), getId());
         print("-------------------------------------");

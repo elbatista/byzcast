@@ -77,7 +77,12 @@ public class ByzCastClientProxy extends Node {
         m.setCliId(getId());
         for(short i : outChannels.keySet()){
             try {
-                outChannels.get(i).writeAndFlush(m);
+                Channel ch = outChannels.get(i);
+                if (ch == null) {
+                    throw new IllegalStateException("Channel not initialized for peer " + i);
+                }
+                ch.writeAndFlush(m);
+                //outChannels.get(i).writeAndFlush(m);
                 sema.acquire();
             } catch (InterruptedException e) {
                 e.printStackTrace();

@@ -19,9 +19,10 @@ public class ByzCastNettyClientChannelHandler extends ChannelInboundHandlerAdapt
     }
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
+        //if(ctx != null)
         proxy.setChannelToDest(ctx.channel(), dst);
         if(syncAllConnections != null) 
-            syncAllConnections.await();
+            syncAllConnections.await(); //Isso pode não estar funcionando, questão de channel active
     }
 
     @Override
