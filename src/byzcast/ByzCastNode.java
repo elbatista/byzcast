@@ -167,6 +167,7 @@ public class ByzCastNode extends ByzCastServerProxy {
        
         //Caso seja de ordem, tenta fazer match com a mensagem de payload correspondente
         if(isOrd){
+            //timestamp ordem
             match = payloads.remove(msgID);
             if(match != null){
                 // achou a mensagem de payload correspondente
@@ -187,6 +188,7 @@ public class ByzCastNode extends ByzCastServerProxy {
                 }
             }
         } else {
+            //timestamp ordem
             //Caso seja de payload, tenta fazer match com a mensagem de ordem no começo da fila
             if(!ordQueue.isEmpty()){
                 if (ordQueue.peek().getId() == msgID){

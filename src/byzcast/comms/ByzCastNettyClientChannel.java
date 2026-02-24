@@ -1,5 +1,6 @@
 package byzcast.comms;
 
+import java.util.ArrayList;
 import java.util.concurrent.CyclicBarrier;
 import base.Node;
 import byzcast.messages.ByzCastMessageDecoder;
@@ -19,14 +20,22 @@ public class ByzCastNettyClientChannel extends Thread {
 
     private ByzCastClientProxy serverProxy;
     private Node node;
+    //public ArrayList<Boolean> activeChannelFlags;
     CyclicBarrier syncAllConnections;
 
     public ByzCastNettyClientChannel(Node node, ByzCastClientProxy serverProxy){
         this(node, serverProxy, null);
     }
 
+    // public ByzCastNettyClientChannel(Node node, ByzCastClientProxy serverProxy){
+    //     this.node = node;
+    //     this.serverProxy = serverProxy;
+    //     start();
+    // }
+
     public ByzCastNettyClientChannel(Node node, ByzCastClientProxy serverProxy, CyclicBarrier syncAllConnections){
         this.syncAllConnections = syncAllConnections;
+        //this.activeChannelFlags = activeChannelFlags;
         this.node = node;
         this.serverProxy = serverProxy;
         start();
@@ -53,6 +62,15 @@ public class ByzCastNettyClientChannel extends Thread {
                     try {
                         ChannelFuture future = b.connect(node.getHost().getName(), node.getHost().getPort()).sync();
                         channel = future.channel();
+                        // int idx = node.getId();
+
+                        // System.out.println("BBBBBBBBB");
+                        // System.out.println(activeChannelFlags);
+
+                        // synchronized (activeChannelFlags) {
+                        //     activeChannelFlags.set(idx, true);
+                        //     System.out.println("Set the node" + idx + "to active:" + activeChannelFlags);
+                        // }
                     }
                     catch(Exception e){
                         try {Thread.sleep(2000);} catch (InterruptedException e2) {}

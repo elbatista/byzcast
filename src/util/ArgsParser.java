@@ -1,5 +1,7 @@
 package util;
 
+import java.util.Arrays;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -10,7 +12,7 @@ import org.apache.commons.cli.ParseException;
 
 public class ArgsParser {
     private Option log, id, numMsgs, clientCount, duration, tpcc, numPartitions, 
-    locality, homewarehouse, region, algorithm, tree, gc, payload, tt, localMsgs, reconfigClient, randPayloadSize;
+    locality, homewarehouse, region, algorithm, tree, gc, payload, tt, localMsgs, reconfigClient, randPayloadSize, dests;
     private Options options;
     private CommandLineParser parser;
     private CommandLine line;
@@ -35,6 +37,7 @@ public class ArgsParser {
         gc = Option.builder("gc").desc("gc client").argName("gc").hasArg().numberOfArgs(1).type(Integer.class).build();
         reconfigClient = Option.builder("rc").desc("reconfig client").argName("rc").hasArg().numberOfArgs(1).type(Integer.class).build();
         randPayloadSize = Option.builder("rps").desc("random payload size (in bytes)").argName("randPayloadSize").hasArg().numberOfArgs(1).type(Integer.class).build();
+        dests = Option.builder("de").desc("destinations").argName("dests").hasArg().numberOfArgs(1).type(String.class).build();
         options = new Options();
         parser = new DefaultParser();
         line = null;
@@ -64,6 +67,7 @@ public class ArgsParser {
         parser.options.addOption(parser.localMsgs);
         parser.options.addOption(parser.reconfigClient);
         parser.options.addOption(parser.randPayloadSize);
+        parser.options.addOption(parser.dests);
         parser.parse(args);
         return parser;
     }
@@ -184,5 +188,21 @@ public class ArgsParser {
     public int getRandPayloadSize() {
         String v = line.getOptionValue("rps");
         return v == null ? 16 : Integer.valueOf(v);
+    }
+
+    public int[] getDests() {
+        String v = line.getOptionValue("de");
+    
+        if (v == null || v.isEmpty()) {
+            return new int[0]; // retorna array vazio se não passou nada
+        }
+    
+        return Arrays.stream(
+                v.replaceAll("[\\[\\]\\s]", "") // remove [ ] e espaços
+                 .split(",")
+        )
+        .filter(s -> !s.isEmpty())
+        .mapToInt(Integer::parseInt)
+        .toArray();
     }
 }

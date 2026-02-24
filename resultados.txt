@@ -1,0 +1,36 @@
+
+=== Resultados Finais ===
+Média de latência total -> 261.7534
+Throughput total -> 115.1667
+
+=== Resultados Finais ===
+Média de latência total -> 308.1307
+Throughput total -> 97.4333
+
+=== Resultados Finais ===
+Média de latência total -> 632.6283
+Throughput total -> 47.8000
+
+=== Resultados Finais ===
+Média de latência total -> 325.4343
+Throughput total -> 92.8667
+
+=== Resultados Finais ===
+Média de latência total -> 362.4022
+Throughput total -> 83.1333
+
+=== Resultados Finais ===
+Média de latência total -> 630.1042
+Throughput total -> 48.0000
+
+=== Resultados Finais ===
+Média de latência total -> 131.6265
+Throughput total -> 228.1333
+
+=== Resultados Finais ===
+Média de latência total -> 224.2386
+Throughput total -> 133.4000
+
+=== Resultados Finais ===
+Média de latência total -> 379.8918
+Throughput total -> 78.8667

@@ -23,23 +23,34 @@ public class StatsReaderClients {
         double[] TPSums = new double[num];
         int[] TotalMSG = new int[num];
 
-        readStats(num, seconds, TPSums, means, stddevs, TotalMSG, "./logs/clients/");
-        // Print no final
-        System.out.println("\n=== Resultados Finais ===");
+    readStats(num, seconds, TPSums, means, stddevs, TotalMSG, "./logs/clients/");
+
+    String outputFile = "./resultados.txt";
+
+    try (PrintWriter out = new PrintWriter(new FileWriter(outputFile, true))) {
+        out.println("\n=== Resultados Finais ===");
+
         double totalLat = 0;
         for (int i = 0; i < means.length; i++) {
-            totalLat +=  means[i] * TPSums[i];
-            //System.out.printf("Arquivo %2d -> Mean: %.4f | StdDev: %.4f%n", i, means[i], stddevs[i]);
+            totalLat += means[i] * TPSums[i];
+            // out.printf("Arquivo %2d -> Mean: %.4f | StdDev: %.4f%n",
+            //             i, means[i], stddevs[i]);
         }
-        System.out.printf("Média de latência total -> %.4f \n", (totalLat/(TotalMSG[0])));
+
+        out.printf("Média de latência total -> %.4f%n",
+                   (totalLat / TotalMSG[0]));
 
         double totalTP = 0;
         for (int i = 0; i < num; i++) {
-            // System.out.printf("Média de throughput em %2d segundos -> %.4f \n", i,   TPSums[i]);
-            totalTP +=  TPSums[i]/seconds;
+            totalTP += TPSums[i] / seconds;
         }
-        System.out.printf("Throughput total -> %.4f \n", totalTP);
+
+        out.printf("Throughput total -> %.4f%n", totalTP);
     }
+    catch (IOException e) {
+        e.printStackTrace();
+    }
+}
 
     public static void readStats(int num, int seconds, double[] TPSums, double[] means, double[] stddevs, int[] TotalMSG, String folderPath) {
         Pattern numberPattern = Pattern.compile("[-+]?[0-9]*\\.?[0-9]+");

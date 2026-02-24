@@ -23,6 +23,11 @@ public class ByzCastMessage extends BaseObj implements Externalizable {
     private Type type;
     private short [] dst;
     private byte[] randPayload;
+    //adicionar campo: timestamp quando envia pro
+    //servidor, e cada destinatario bota um 
+    //timestamp p/ ordem e para payload 
+    //(timestamp - ord) pra saber delay de entrega
+    //(timestamp - pay) pra saber delay do payload
 
     // "transient" fields
     private Channel channelIn;

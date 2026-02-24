@@ -1,5 +1,6 @@
 package byzcast.comms;
 
+import java.util.ArrayList;
 import java.util.concurrent.CyclicBarrier;
 import byzcast.messages.ByzCastMessage;
 import byzcast.messages.ByzCastMessage.Type;
@@ -11,16 +12,21 @@ public class ByzCastNettyClientChannelHandler extends ChannelInboundHandlerAdapt
     private ByzCastClientProxy proxy;
     private short dst;
     private CyclicBarrier syncAllConnections;
+    //private ArrayList activeChannelFlags;
+
 
     public ByzCastNettyClientChannelHandler(ByzCastClientProxy p, short dst, CyclicBarrier syncAllConnections){
         this.proxy = p;
         this.dst = dst;
         this.syncAllConnections = syncAllConnections;
+        //this.activeChannelFlags = activeChannelFlags;
     }
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
-        //if(ctx != null)
+        //if(ctx.channel == null)
+        //activeChannelFlags[dst] == false
         proxy.setChannelToDest(ctx.channel(), dst);
+        System.out.println("This channelActive was called by:" + dst);
         if(syncAllConnections != null) 
             syncAllConnections.await(); //Isso pode não estar funcionando, questão de channel active
     }

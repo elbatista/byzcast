@@ -1,0 +1,1 @@
+// Recebe pacote, anota tempo e descarta

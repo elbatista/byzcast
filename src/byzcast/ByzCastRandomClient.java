@@ -30,6 +30,7 @@ public class ByzCastRandomClient extends ByzCastClientProxy {
     protected CyclicBarrier syncAllConnections;
     protected FileManager files;
     private int [] destsSizes;
+    private short [] dests;
     protected final Random gen;
     private int algo;
     private String[] algorithm = new String[]{"ByzCast","Disseminator"};
@@ -42,10 +43,17 @@ public class ByzCastRandomClient extends ByzCastClientProxy {
         this.gen = new Random(System.nanoTime());
         this.clientCount = args.getClientCount();
         this.randPayloadSize = args.getRandPayloadSize();
+        this.dests = toShortArray(args.getDests());
         this.algo = args.getAlgorithm();
         ArrayList<Node> nodes = files.loadHosts();
         syncAllConnections = new CyclicBarrier(nodes.size()+1);
+        // ArrayList<Boolean> activeChannelFlags = new ArrayList<>();
+        // for (int i = 0; i < nodes.size(); i++) {
+        //     activeChannelFlags.add(false);
+        // }
         for(Node server : nodes) connectTo(server, syncAllConnections);
+        // System.out.println("AAAAAAAAAA");
+        // System.out.println(activeChannelFlags);
         numNodes = (short) nodes.size();
         short root = nodes.get(0).getId();
         lcafinder = new TarjanLCAFinder<Short,DefaultEdge>(tree, root);
@@ -71,7 +79,12 @@ public class ByzCastRandomClient extends ByzCastClientProxy {
             print("Failed to wait for all server connections to complete");
             exit();
         }
-        sleep(2000);
+        //while(true){ 
+            //for i in activeChannelFlags
+            //if (i == false)
+            //connectTo()
+            //semaphore(i != false) -> usar isso pra esperar até o channelActive liberar para ver se a tag está true
+        //}
         // send initialization message to all servers
         // so they can save the connections to each client
         sendInitMessage();
@@ -136,8 +149,8 @@ public class ByzCastRandomClient extends ByzCastClientProxy {
     private ByzCastMessage newMessage(){
         ByzCastMessage m = new ByzCastMessage(nextSeqNumber());
         m.setType(Type.MSG);
-        //m.setDst(generateMaxXDests(4));
-        m.setDst(new short[] {0});
+        //m.setDst(generateMaxXDests(2));
+        m.setDst(dests);
         m.setCliId(getId());
         return m;
     }
@@ -172,5 +185,13 @@ public class ByzCastRandomClient extends ByzCastClientProxy {
 
     public static int randomNumber(int min, int max, Random r) {
         return (int) (r.nextDouble() * (max - min + 1) + min);
+    }
+
+    public static short[] toShortArray(int[] ints) {
+        short[] shorts = new short[ints.length];
+        for (int i = 0; i < ints.length; i++) {
+            shorts[i] = (short) ints[i];
+        }
+        return shorts;
     }
 }

@@ -18,8 +18,9 @@ clispernode=$3
 servers=$4;
 clients=$((countClientNodes * clispernode));
 payloadSizeBytes=$5
-firstNode=50
-lastNode=80
+dests=$6
+firstNode=34
+lastNode=64
 algodesc=("ByzCast" "Disseminator")
 # payloadSizeBytes=1048576 # 1MB
 rm -f -r $basedir/logs $basedir/files $basedir/results;
@@ -72,7 +73,7 @@ while IFS=, read -r node region
 do
     echo "$clispernode clients (from id $ID) on $node region $region " >> $basedir/logs/execution.log;
 
-    ./scripts/sshcli.sh $node $basedir $clients $ID $duration $algo $clispernode $payloadSizeBytes
+    ./scripts/sshcli.sh $node $basedir $clients $ID $duration $algo $clispernode $payloadSizeBytes $dests
     sleep .5;
     ID=$(($ID+$clispernode));
 done < <( awk '!/^ *#/ && NF'  "$clifile");

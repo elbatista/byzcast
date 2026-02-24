@@ -6,6 +6,7 @@ duration=$5
 algo=$6
 clispernode=$7
 payloadSizeBytes=$8
+dests=$9
 
 ssh -o StrictHostKeyChecking=accept-new $node "cd $basedir; ./scripts/runClients.sh \
-$node $basedir $clients $ID $duration $algo $clispernode $payloadSizeBytes" &
+$node $basedir $clients $ID $duration $algo $clispernode $payloadSizeBytes $dests" &
