@@ -6,10 +6,11 @@ public class StatsReaderClients {
 
     public static void main(String[] args) {
         int num = 15;
-        int seconds = 30;
+        int seconds = 120;
 
         // Lendo parâmetros do usuário
         if (args.length >= 2) {
+            //System.out.println("Algo");
             try {
                 num = Integer.parseInt(args[0]);
                 seconds = Integer.parseInt(args[1]);

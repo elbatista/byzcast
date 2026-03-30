@@ -2,6 +2,9 @@
 
 import java.util.HashMap;
 import java.util.Random;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CountDownLatch;
+
 import org.jgrapht.Graph;
 import org.jgrapht.alg.lca.TarjanLCAFinder;
 import org.jgrapht.graph.DefaultEdge;
@@ -12,69 +15,82 @@ import byzcast.messages.ByzCastMessage.Type;
 import io.netty.channel.Channel;
 import util.Stats;
 
+public class TestClient extends Node implements ClientProxyTest {
 
-public class TestClient extends Node {
-    private HashMap<Short, Channel> outChannels;
-    protected Graph<Short,DefaultEdge> tree;
-    protected TarjanLCAFinder<Short,DefaultEdge> lcafinder;
-    
-    protected Stats stats;
+    private HashMap<Short, Channel> outChannels = new HashMap<>();
     protected int randPayloadSize = 0;
     protected final Random gen = new Random(System.nanoTime());
-    short lca;
-    short[] dsts;
+    private final CountDownLatch connectionLatch = new CountDownLatch(1);
 
-    // public void connectTo(Node dest){
-    //     this(node, serverProxy, null);
-    // }
+    public TestClient(short id, int payloadSize, Node serverNode) {
+        super(id);
+        this.randPayloadSize = payloadSize;
+        sleep(1000);
+        connectTo(serverNode);
+    }
+
+    public void connectTo(Node dest) {
+        new ByzCastNettyClientChannelTest(dest, this);
+    }
+
+    @Override
+    public void setChannelToDest(Channel ch, short dst) {
+        outChannels.put(dst, ch);
+        connectionLatch.countDown();
+        print(connectionLatch);
+    }
 
     private void generatePayload(ByzCastMessage m) {
-        m.setTransaction(TransactionType.NOPAYLOAD);
         byte[] payload = new byte[randPayloadSize];
-        if (randPayloadSize > 0) {
-            gen.nextBytes(payload);
-            m.setRandPayload(payload);
-        } else {
-            m.setRandPayload(null);
-        }
+        if (randPayloadSize > 0) gen.nextBytes(payload);
+        m.setRandPayload(payload);
     }
 
-    public void send(ByzCastMessage m, short dst){
-        try {
-            outChannels.get(dst).writeAndFlush(m);
-        }
-        catch(Exception e){
-            e.printStackTrace();
-            print(e);
-            exit();
-        }
+    public void send(ByzCastMessage m, short dst) {
+        outChannels.get(dst).writeAndFlush(m);
     }
 
-    private ByzCastMessage newMessage(){
+    private ByzCastMessage newMessage(short dst) {
         ByzCastMessage m = new ByzCastMessage(1);
         m.setType(Type.MSG);
-        //m.setDst(generateMaxXDests(2));
-        //m.setDst([0]);
+        m.setTransaction(TransactionType.NOPAYLOAD);
         m.setCliId(getId());
+        m.setDst(new short[]{dst});
+        generatePayload(m);
         return m;
     }
 
-    public void run(){
-        ByzCastMessage m = newMessage();
-
-        generatePayload(m);
-
-        long start = System.currentTimeMillis();
-        
-        for(int i = 0; i < 10000; i++){
-            //send(m,destino)
+    public void awaitConnection() {
+        try {
+            connectionLatch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
+    }
 
+    public void run() {
+        ByzCastMessage m = newMessage((short) 0);
+        generatePayload(m);
+    
+        long start = System.currentTimeMillis();
+        for (int i = 0; i < 2000; i++) {
+            send(m, (short) 0); 
+        }
+    
         long finish = System.currentTimeMillis();
         long timeElapsed = finish - start;
+    
+        System.out.println("Envio concluído em " + timeElapsed + " ms");
+
+        sleep(180000);
+    }
+
+    @Override
+    public void buffer(ByzCastMessage m) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'buffer'");
     }
 }
-
 
 //run chama um java e passa path + parametros
 

@@ -149,8 +149,8 @@ public class ByzCastRandomClient extends ByzCastClientProxy {
     private ByzCastMessage newMessage(){
         ByzCastMessage m = new ByzCastMessage(nextSeqNumber());
         m.setType(Type.MSG);
-        //m.setDst(generateMaxXDests(2));
-        m.setDst(dests);
+        m.setDst(generateMaxXDests(4));
+        //m.setDst(dests);
         m.setCliId(getId());
         return m;
     }
