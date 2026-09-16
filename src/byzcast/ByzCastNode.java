@@ -81,7 +81,7 @@ public class ByzCastNode extends ByzCastServerProxy {
     @Override
     protected void receiveMsg(ByzCastMessage m){
 
-        print("Got msg");
+        //print("Got msg");
 
         ByzCastMessage payloadMsg;
         msgsTotal++;

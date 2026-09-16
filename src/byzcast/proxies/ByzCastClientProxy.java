@@ -21,10 +21,11 @@ import byzcast.messages.ByzCastMessage.Type;
 import io.netty.channel.Channel;
 import util.FileManager;
 import util.Stats;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 public class ByzCastClientProxy extends Node {
-    private HashMap<Short, Channel> outChannels;
+    private ConcurrentHashMap<Short, Channel> outChannels;
     private Semaphore sema = new Semaphore(0);
     private ReentrantLock lock = new ReentrantLock();
     private ArrayList<ByzCastMessage> replies = new ArrayList<>();
@@ -40,7 +41,7 @@ public class ByzCastClientProxy extends Node {
 
     public ByzCastClientProxy(short id){
         super(id);
-        outChannels = new HashMap<>();
+        outChannels = new ConcurrentHashMap<>();
         tree = new FileManager().loadByzCastTreeAsGraph();
         print("ByzCast Tree:", getTreeString());
     }
@@ -50,6 +51,10 @@ public class ByzCastClientProxy extends Node {
         Writer writer = new StringWriter();
         exporter.exportGraph(tree, writer);
         return writer.toString().replaceAll("\n", " ");
+    }
+
+    public ConcurrentHashMap<Short, Channel> getOutChannels() {
+    return outChannels;
     }
 
     public void connectTo(Node dest){
@@ -72,18 +77,65 @@ public class ByzCastClientProxy extends Node {
         }
     }
 
-    public void sendInitMessage(){
+    // public void sendInitMessage(){
+    //     ByzCastMessage m = new ByzCastMessage(-1);
+    //     sleep(500);
+    //     m.setType(Type.CONN);
+    //     m.setCliId(getId());
+
+    //     System.out.println("Keys: " + outChannels.keySet());
+    //     System.out.println("Channel: " + outChannels.get((short)0));
+    //     for(short i : outChannels.keySet()){
+    //         try {
+    //             Channel ch = outChannels.get(i);
+    //             if (ch == null) {
+    //                 throw new IllegalStateException("Channel not initialized for peer " + i);
+    //             }
+    //             ch.writeAndFlush(m);
+    //             //outChannels.get(i).writeAndFlush(m);
+    //             sema.acquire();
+    //         } catch (InterruptedException e) {
+                
+    //             e.printStackTrace();
+    //         }
+    //     }
+    // }
+
+    public void sendInitMessage() {
         ByzCastMessage m = new ByzCastMessage(-1);
+        
+        sleep(500);
+        
         m.setType(Type.CONN);
         m.setCliId(getId());
-        for(short i : outChannels.keySet()){
+        
+        for (short i : outChannels.keySet()) {
+            Channel ch = outChannels.get(i);
+        
+            if (ch == null) {
+                System.out.println("================================");
+                System.out.println("NULL CHANNEL IN INIT MESSAGE!");
+                System.out.println("Client = " + getId());
+                System.out.println("Destination = " + i);
+                System.out.println("Known channels = " + outChannels.keySet());
+                System.out.println("Message type = " + m.getType());
+                System.out.println("Message id = " + m.getId());
+                System.out.println("Thread = " + Thread.currentThread().getName());
+                System.out.println("================================");
+            
+                continue;
+            }
+        
+            System.out.println(
+                "[SEND INIT] Client=" + getId() +
+                " dst=" + i +
+                " channel=" + ch.id() +
+                " active=" + ch.isActive() +
+                " open=" + ch.isOpen()
+            );
+        
             try {
-                Channel ch = outChannels.get(i);
-                if (ch == null) {
-                    throw new IllegalStateException("Channel not initialized for peer " + i);
-                }
                 ch.writeAndFlush(m);
-                //outChannels.get(i).writeAndFlush(m);
                 sema.acquire();
             } catch (InterruptedException e) {
                 e.printStackTrace();
@@ -91,12 +143,41 @@ public class ByzCastClientProxy extends Node {
         }
     }
 
-    public void sendReadyMessage(){
+    public void sendReadyMessage() {
+        sleep(500);
+
         ByzCastMessage m = new ByzCastMessage();
         m.setType(Type.READY);
         m.setCliId(getId());
+
+        short dst = 0;
+
+        Channel ch = outChannels.get(dst);
+
+        if (ch == null) {
+            System.out.println("================================");
+            System.out.println("NULL CHANNEL!");
+            System.out.println("Client = " + getId());
+            System.out.println("Trying to send to dst = 0");
+            System.out.println("Known channels = " + outChannels.keySet());
+            System.out.println("Message type = " + m.getType());
+            System.out.println("Message id = " + m.getId());
+            System.out.println("Thread = " + Thread.currentThread().getName());
+            System.out.println("================================");
+
+            return;
+        }
+
+        System.out.println(
+            "[SEND READY] Client=" + getId() +
+            " dst=0" +
+            " channel=" + ch.id() +
+            " active=" + ch.isActive() +
+            " open=" + ch.isOpen()
+        );
+
         try {
-            outChannels.get((short)0).writeAndFlush(m);
+            ch.writeAndFlush(m);
             sema.acquire();
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -125,7 +206,23 @@ public class ByzCastClientProxy extends Node {
     public void send(ByzCastMessage m, short dst){
         // print(m.getId(), Arrays.toString(m.getDst()));
         try {
-            outChannels.get(dst).writeAndFlush(m);
+            Channel ch = outChannels.get(dst);
+            if (ch == null) {
+                System.out.println("================================");
+                System.out.println("NULL CHANNEL!");
+                System.out.println("Client = " + getId());
+                System.out.println("Trying to send to dst = " + dst);
+                System.out.println("Known channels = " + outChannels.keySet());
+                System.out.println("Map size = " + outChannels.size());
+                System.out.println("Message type = " + m.getType());
+                System.out.println("Message id = " + m.getId());
+                System.out.println("Thread = " + Thread.currentThread().getName());
+                System.out.println("================================");
+
+                throw new RuntimeException("Channel " + dst + " is null" + " for client " + getId() + ". Known channels: " + outChannels.keySet());
+            }
+            ch.writeAndFlush(m);
+            // outChannels.get(dst).writeAndFlush(m);
         }
         catch(Exception e){
             e.printStackTrace();
@@ -163,6 +260,46 @@ public class ByzCastClientProxy extends Node {
         // Standard multicast is for ByzCast algorithm (0)
         return multicast(m, 0);
     }
+
+    //Version of multicast that does not wait for replies. Used for sending ORD messages to the LCA before sending PAY messages to the destinations.
+    public ByzCastMessage multicastNoReply(ByzCastMessage m, int algo){
+        lca = getLca(m, algo);
+        send(m, lca);
+        return null;
+    }
+
+     public ByzCastMessage sendPayload(ByzCastMessage m, ArrayList<Node> nodes){
+        for(Node n : nodes){
+            if(m.isAddressedTo(n.getId())){
+                // print(payloadMsg);
+                // print(n.getId());
+                send(m, n.getId());
+            }
+        }
+        return null;
+    }
+    
+    public ByzCastMessage sendPayloadWithReply(ByzCastMessage m, ArrayList<Node> nodes){
+        replies.clear();
+        expectedReplies = (short) m.getDst().length;
+        latsPerNode.clear();
+        startTime = System.currentTimeMillis();
+        dsts = m.getDst();
+        for(Node n : nodes){
+            if(m.isAddressedTo(n.getId())){
+                // print(payloadMsg);
+                // print(n.getId());
+                send(m, n.getId());
+            }
+        }
+        try {
+            sema.acquire();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return replies.get(0);
+    }
+
 
     public ByzCastMessage multicast(ByzCastMessage m, int algo){
         replies.clear();

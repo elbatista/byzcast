@@ -19,8 +19,8 @@ servers=$4;
 clients=$((countClientNodes * clispernode));
 payloadSizeBytes=$5
 dests=$6
-firstNode=34
-lastNode=64
+firstNode=30 #34
+lastNode=61 #64
 algodesc=("ByzCast" "Disseminator")
 # payloadSizeBytes=1048576 # 1MB
 rm -f -r $basedir/logs $basedir/files $basedir/results;
@@ -63,6 +63,7 @@ do
     sleep .5;
     ID=$(($ID+1));
 done < <( awk '!/^ *#/ && NF' "$serverfile");
+sleep 20; # solves the "return value of "java.util.HashMap.get(Object)" is null" error on clients
 echo "started $servers servers"  >> $basedir/logs/execution.log;
 
 

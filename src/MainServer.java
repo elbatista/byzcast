@@ -1,3 +1,4 @@
+import byzcast.ByzCastNodeVar1;
 import byzcast.ByzCastNode;
 import byzcast.DisseminatorNode;
 import util.ArgsParser;
@@ -8,8 +9,10 @@ public class MainServer {
         ArgsParser p = ArgsParser.getServerParser(args);
 
         if(p.getAlgorithm() == 0)
-            new ByzCastNode(p.getId(), p);
+        new ByzCastNode(p.getId(), p);
+        //new ByzCastNodeVar1(p.getId(), p);
         else
-            new DisseminatorNode(p.getId(), p);
+        new ByzCastNodeVar1(p.getId(), p);
+            // new DisseminatorNode(p.getId(), p);
     }
 }

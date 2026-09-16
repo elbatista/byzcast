@@ -1,40 +1,44 @@
 #!/bin/bash
 
-# valores fixos
 dests=(2 3 4)
-clis=(15 30 75 150 300)
+clis=(30 150 300 450 750 1050)
 tams=(64 512 1024)
 
-# limpa antigos (opcional)
 rm -f D*_T*.dat
 
 for dest in "${dests[@]}"; do
-  for tam in "${tams[@]}"; do
+    for tam in "${tams[@]}"; do
 
-    outfile="D${dest}_T${tam}.dat"
+        outfile="D${dest}_T${tam}.dat"
+        echo "Gerando $outfile"
 
-    for cli in "${clis[@]}"; do
+        for cli in "${clis[@]}"; do
 
-      file="Dests:${dest},Lat:50,Time:60,Cli:${cli}.txt"
-      echo $file
-      # ignora se arquivo não existir
-      [ ! -f "$file" ] && continue
+            file="Dests:${dest},Lat:50,Time:60,Cli:${cli}.txt"
 
-      # pula header e processa
-      while read codigo t lat tp || [ -n "$codigo" ]; do
+            echo "  Processando $file"
 
-      if [ "$t" = "$tam" ]; then
-        lat=$(echo "$lat" | tr ',' '.')
-        tp=$(echo "$tp" | tr ',' '.')
+            if [ ! -f "$file" ]; then
+                echo "    ARQUIVO NÃO EXISTE!"
+                continue
+            fi
 
-        echo "$codigo $cli $tp $lat" >> "$outfile"
-      fi
+            while read codigo t lat tp; do
 
-    done < <(tail -n +2 "$file")
+                if [ "$t" = "$tam" ]; then
+                    lat=$(echo "$lat" | tr ',' '.')
+                    tp=$(echo "$tp" | tr ',' '.')
+
+                    echo "$codigo $cli $tp $lat" >> "$outfile"
+                fi
+
+            done < "$file"
+
+        done
+
+        echo "  Linhas geradas: $(wc -l < "$outfile" 2>/dev/null || echo 0)"
 
     done
-
-  done
 done
 
 echo "Arquivos .dat gerados!"

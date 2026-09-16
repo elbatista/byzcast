@@ -74,6 +74,9 @@ public class ByzCastNettyClientChannel extends Thread {
                     }
                     catch(Exception e){
                         try {Thread.sleep(2000);} catch (InterruptedException e2) {}
+                    //     try {Thread.sleep(2000);
+                    //          System.err.println(e);
+                    //         } catch (InterruptedException e2) {} //Arrumar exception
                     }
                 }
                 channel.closeFuture().sync();

@@ -52,7 +52,6 @@ public class ByzCastRandomClient extends ByzCastClientProxy {
         //     activeChannelFlags.add(false);
         // }
         for(Node server : nodes) connectTo(server, syncAllConnections);
-        // System.out.println("AAAAAAAAAA");
         // System.out.println(activeChannelFlags);
         numNodes = (short) nodes.size();
         short root = nodes.get(0).getId();
@@ -149,7 +148,7 @@ public class ByzCastRandomClient extends ByzCastClientProxy {
     private ByzCastMessage newMessage(){
         ByzCastMessage m = new ByzCastMessage(nextSeqNumber());
         m.setType(Type.MSG);
-        m.setDst(generateMaxXDests(4));
+        m.setDst(generateMaxXDests(2));
         //m.setDst(dests);
         m.setCliId(getId());
         return m;
@@ -171,7 +170,7 @@ public class ByzCastRandomClient extends ByzCastClientProxy {
 
     private short[] generateMaxXDests(int X) {
         Set<Short> uniqueNumbers = new HashSet<>();
-        int size = randomNumber(2, X, gen); // only global
+        int size = X; //randomNumber(2, X, gen); // only global
         while (uniqueNumbers.size() < size)
             uniqueNumbers.add((short)randomNumber(0, numNodes-1, gen));
         short [] tempdst = new short[size];
