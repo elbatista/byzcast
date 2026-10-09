@@ -85,6 +85,9 @@ public abstract class ByzCastServerProxy extends ByzCastClientProxy {
 
     protected void sendReply(ByzCastMessage m){
         ByzCastMessage reply = new ByzCastMessage(m.getId());
+        if(m.getSplit() == ByzCastMessage.Split.PAY){
+            reply.setSplit(ByzCastMessage.Split.PAY);
+        }
         reply.setSender(getId());
         reply.setType(Type.REPLY);
         cliChannels.get(m.getCliId()).writeAndFlush(reply);

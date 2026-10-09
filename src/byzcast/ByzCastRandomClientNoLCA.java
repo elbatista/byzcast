@@ -26,7 +26,7 @@ import util.FileManager;
 import util.Stats;
 import util.Util;
 
-public class ByzCastRandomClientVar1 extends ByzCastClientProxy {
+public class ByzCastRandomClientNoLCA extends ByzCastClientProxy {
     protected ArgsParser args;
     protected int seqNumber, totalTime, clientCount, randPayloadSize = 0;
     protected short numNodes = 0;
@@ -39,7 +39,7 @@ public class ByzCastRandomClientVar1 extends ByzCastClientProxy {
     private ArrayList<Node> nodes;
     private String[] algorithm = new String[]{"ByzCast","Disseminator"};
     
-    public ByzCastRandomClientVar1(short id, ArgsParser args, boolean start){
+    public ByzCastRandomClientNoLCA(short id, ArgsParser args, boolean start){
         super(id);
         this.args = args;
         this.totalTime = args.getDuration();
@@ -56,7 +56,6 @@ public class ByzCastRandomClientVar1 extends ByzCastClientProxy {
         //     activeChannelFlags.add(false);
         // }
         for(Node server : nodes) connectTo(server, syncAllConnections);
-        // sleep(500);
         // System.out.println(activeChannelFlags);
         numNodes = (short) nodes.size();
         short root = nodes.get(0).getId();
@@ -108,11 +107,7 @@ public class ByzCastRandomClientVar1 extends ByzCastClientProxy {
 
         long startTime = System.currentTimeMillis(), elapsed = 0, now;
         int totalMsgs = 0;
-
-        int connected = getOutChannels().size();
-
-        print("Connected to", connected, "out of", nodes.size());
-        print("Connected to servers:", getOutChannels().keySet());
+        print("Starting experiment for", totalTime, "seconds...");
 
         while ((elapsed / 1000) < totalTime) {
             ByzCastMessage m = newMessage();
@@ -124,15 +119,13 @@ public class ByzCastRandomClientVar1 extends ByzCastClientProxy {
 
             payloadMsg = m.cloneMessage(m, true); 
             payloadMsg.setSplit(Split.PAY);
-            
-            m = m.setToOrder(m);
 
             now = System.currentTimeMillis();
 
             //Encaminha msg PAY para os destinos conforme a árvore ✅
-            sendPayload(payloadMsg, nodes);
+            sendPayloadNoLCA(payloadMsg, nodes, algo);
 
-            multicast(m, algo);
+            // multicast(m, algo);
             
             stats.store((System.currentTimeMillis() - now), (m.getDst().length > 1));
             
@@ -173,7 +166,7 @@ public class ByzCastRandomClientVar1 extends ByzCastClientProxy {
     private ByzCastMessage newMessage(){
         ByzCastMessage m = new ByzCastMessage(nextSeqNumber());
         m.setType(Type.MSG);
-        m.setDst(generateMaxXDests(2));
+        m.setDst(generateMaxXDests(4));
         //m.setDst(dests);
         m.setCliId(getId());
         return m;

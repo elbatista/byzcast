@@ -1,8 +1,6 @@
-import byzcast.ByzCastRandomClientVar1;
-import byzcast.ByzCastNode;
-import byzcast.ByzCastNodeVar1;
-import byzcast.ByzCastRandomClientVar2;
-import byzcast.ByzCastRandomClient;
+import byzcast.ByzCastRandomClientSequential;
+import byzcast.ByzCastRandomClientParallel;
+import byzcast.ByzCastRandomClientLCA;
 import util.ArgsParser;
 
 public class MainClient {
@@ -10,10 +8,10 @@ public class MainClient {
         ArgsParser p = ArgsParser.getClientParser(args);
 
         if(p.getAlgorithm() == 0) 
-        new ByzCastRandomClient(p.getId(), p, true); //Trocar
+        new ByzCastRandomClientLCA(p.getId(), p, true); // separa no LCA
         else if(p.getAlgorithm() == 1)
-        new ByzCastRandomClientVar1(p.getId(), p, true); 
+        new ByzCastRandomClientSequential(p.getId(), p, true); // separa no cliente sequencial
         else if(p.getAlgorithm() == 2)
-        new ByzCastRandomClientVar2(p.getId(), p, true);
+        new ByzCastRandomClientParallel(p.getId(), p, true); // separa no cliente "paralelo"
     }
 }

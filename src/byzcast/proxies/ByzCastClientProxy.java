@@ -17,6 +17,7 @@ import org.jgrapht.nio.dot.DOTExporter;
 import base.Node;
 import byzcast.comms.ByzCastNettyClientChannel;
 import byzcast.messages.ByzCastMessage;
+import byzcast.messages.ByzCastMessage.Split;
 import byzcast.messages.ByzCastMessage.Type;
 import io.netty.channel.Channel;
 import util.FileManager;
@@ -29,6 +30,7 @@ public class ByzCastClientProxy extends Node {
     private Semaphore sema = new Semaphore(0);
     private ReentrantLock lock = new ReentrantLock();
     private ArrayList<ByzCastMessage> replies = new ArrayList<>();
+    private ArrayList<ByzCastMessage> payloadsConfirmed = new ArrayList<>();
     private short expectedReplies = 0;
     protected Graph<Short,DefaultEdge> tree;
     protected TarjanLCAFinder<Short,DefaultEdge> lcafinder;
@@ -126,14 +128,6 @@ public class ByzCastClientProxy extends Node {
                 continue;
             }
         
-            System.out.println(
-                "[SEND INIT] Client=" + getId() +
-                " dst=" + i +
-                " channel=" + ch.id() +
-                " active=" + ch.isActive() +
-                " open=" + ch.isOpen()
-            );
-        
             try {
                 ch.writeAndFlush(m);
                 sema.acquire();
@@ -167,14 +161,6 @@ public class ByzCastClientProxy extends Node {
 
             return;
         }
-
-        System.out.println(
-            "[SEND READY] Client=" + getId() +
-            " dst=0" +
-            " channel=" + ch.id() +
-            " active=" + ch.isActive() +
-            " open=" + ch.isOpen()
-        );
 
         try {
             ch.writeAndFlush(m);
@@ -242,18 +228,33 @@ public class ByzCastClientProxy extends Node {
     }
 
     public void receiveReply(ByzCastMessage reply){
-        lock.lock();
+        print(reply.getSplit());
+        if(reply.getSplit() == Split.PAY){
+            lock.lock();
 
-        // store latency per node in ms
-        latsPerNode.put(reply.getSender(), ((System.currentTimeMillis() - startTime)));
+            payloadsConfirmed.add(reply);
 
-        replies.add(reply);
+            if(payloadsConfirmed.size() == expectedReplies){
+                if(stats != null) stats.store(latsPerNode, expectedReplies>1, dsts);
+                sema.release();
+            }
+            lock.unlock();
+        } else {
+            lock.lock();
 
-        if(replies.size() == expectedReplies){
-            if(stats != null) stats.store(latsPerNode, expectedReplies>1, dsts);
-            sema.release();
+            // store latency per node in ms
+            latsPerNode.put(reply.getSender(), ((System.currentTimeMillis() - startTime)));
+
+            replies.add(reply);
+            //System.out.println("[REPLY] Received reply from " + reply.getSender() + ". Total replies: " + replies.size() + "/" + expectedReplies);
+
+            if(replies.size() == expectedReplies){
+                if(stats != null) stats.store(latsPerNode, expectedReplies>1, dsts);
+                //System.out.println("[REPLY] All replies received. Releasing semaphore for message " + reply.getId());
+                sema.release();
+            }
+            lock.unlock();
         }
-        lock.unlock();
     }
 
     public ByzCastMessage multicast(ByzCastMessage m){
@@ -268,11 +269,42 @@ public class ByzCastClientProxy extends Node {
         return null;
     }
 
+    public ByzCastMessage sendPayloadWithLeader(ByzCastMessage m, ArrayList<Node> nodes){
+        for(Node n : nodes){
+            if(m.isAddressedTo(n.getId())){
+                send(m, n.getId());
+            }
+        }
+        return null;
+    }
+
+    public ByzCastMessage sendPayloadNoLCA(ByzCastMessage m, ArrayList<Node> nodes, int algo){
+        lca = getLca(m, algo);
+        for(Node n : nodes){
+            if(m.isAddressedTo(n.getId()) && n.getId() != lca){
+                send(m, n.getId());
+            }
+        }
+        return null;
+    }
+
      public ByzCastMessage sendPayload(ByzCastMessage m, ArrayList<Node> nodes){
         for(Node n : nodes){
             if(m.isAddressedTo(n.getId())){
-                // print(payloadMsg);
-                // print(n.getId());
+                send(m, n.getId());
+            }
+        }
+        return null;
+    }
+
+        public ByzCastMessage sendPayloadWithId(ByzCastMessage m, ArrayList<Node> nodes){
+        int numDests = m.getDst().length;
+        //escolhe um dos destinos para enviar a mensagem com ID ()
+        // random = new java.util.Random();
+        // int randomIndex = random.nextInt(numDests);
+        // short chosenDest = m.getDst()[randomIndex];
+        for(Node n : nodes){
+            if(m.isAddressedTo(n.getId())){
                 send(m, n.getId());
             }
         }
@@ -280,29 +312,29 @@ public class ByzCastClientProxy extends Node {
     }
     
     public ByzCastMessage sendPayloadWithReply(ByzCastMessage m, ArrayList<Node> nodes){
-        replies.clear();
+        payloadsConfirmed.clear();
         expectedReplies = (short) m.getDst().length;
         latsPerNode.clear();
         startTime = System.currentTimeMillis();
         dsts = m.getDst();
         for(Node n : nodes){
             if(m.isAddressedTo(n.getId())){
-                // print(payloadMsg);
-                // print(n.getId());
                 send(m, n.getId());
             }
         }
         try {
+            //System.out.println("[PAYLOAD] Waiting for " + expectedReplies + " replies");
             sema.acquire();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        return replies.get(0);
+        return payloadsConfirmed.get(0);
     }
 
 
     public ByzCastMessage multicast(ByzCastMessage m, int algo){
         replies.clear();
+        //System.out.println("[MULTICAST] Multicasting message " + m.getId() + " to " + m.getDst().length + " destinations");
         expectedReplies = (short) m.getDst().length;
         latsPerNode.clear();
         startTime = System.currentTimeMillis();
@@ -316,6 +348,7 @@ public class ByzCastClientProxy extends Node {
         }
         return replies.get(0);
     }
+
     //Pegar ESSE LCA
     public short getLca(ByzCastMessage m, int algo) {
         if(m.getDst().length == 1) return m.getDst()[0];

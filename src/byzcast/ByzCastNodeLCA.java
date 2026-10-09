@@ -24,7 +24,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 
 
-public class ByzCastNodeVar1 extends ByzCastServerProxy {
+public class ByzCastNodeLCA extends ByzCastServerProxy {
     protected int numNodes;
     protected final Random gen;
     protected FileManager files;
@@ -39,7 +39,7 @@ public class ByzCastNodeVar1 extends ByzCastServerProxy {
 
     //private volatile boolean running = true;
 
-    public ByzCastNodeVar1(short id, ArgsParser args){
+    public ByzCastNodeLCA(short id, ArgsParser args){
         super(id, args.getClientCount());
         this.files = new FileManager();
         this.gen = new Random(System.nanoTime());
@@ -81,7 +81,7 @@ public class ByzCastNodeVar1 extends ByzCastServerProxy {
     @Override
     protected void receiveMsg(ByzCastMessage m){
 
-        // print("Got msg");
+        //print("Got msg");
 
         ByzCastMessage payloadMsg;
         msgsTotal++;
@@ -89,32 +89,32 @@ public class ByzCastNodeVar1 extends ByzCastServerProxy {
 
         Set<Short> sent = new HashSet<>();
 
-        // if (getId() == getLca(m,0)){
-        //     //Caso seja, separa payload de msg Ordem
-        //     //separar a msg na normal e em uma que é só o payload (sabe o id da de Ordem) -> randPayload
+        if (getId() == getLca(m,0)){
+            //Caso seja, separa payload de msg Ordem
+            // separar a msg na normal e em uma que é só o payload (sabe o id da de Ordem) -> randPayload
 
-        //     payloadMsg = m.cloneMessage(m, true); //arrumar
-        //     payloadMsg.setSplit(Split.PAY);
+            payloadMsg = m.cloneMessage(m, true); //arrumar
+            payloadMsg.setSplit(Split.PAY);
             
-        //     m = m.setToOrder(m);
+            m = m.setToOrder(m);
 
-        //     //Encaminha msg PAY para os destinos conforme a árvore ✅
-        //     for(Node n : connected){
-        //         if(payloadMsg.isAddressedTo(n.getId())){
-        //             // print(payloadMsg);
-        //             // print(n.getId());
-        //             send(payloadMsg, n.getId());
-        //         }
-        //     }
+            //Encaminha msg PAY para os destinos conforme a árvore ✅
+            for(Node n : connected){
+                if(payloadMsg.isAddressedTo(n.getId())){
+                    // print(payloadMsg);
+                    // print(n.getId());
+                    send(payloadMsg, n.getId());
+                }
+            }
 
-        //     if(m.isAddressedTo(getId())){
-        //         deliver(m);
-        //         // print("LCA Delivered!");
-        //         // print(m.getId(), Arrays.toString(m.getDst()));
-        //     }
-        // }
+            if(m.isAddressedTo(getId())){
+                deliver(m);
+                // print("LCA Delivered!");
+                // print(m.getId(), Arrays.toString(m.getDst()));
+            }
+        }
 
-        if (m.getSplit() == Split.ORD && m.isAddressedTo(getId())) {
+        if (m.getSplit() == Split.ORD && m.isAddressedTo(getId()) && getId() != getLca(m,0)) {
             ordQueue.add(m);
             try {
                 messageMatcher(m.getId(),true);
@@ -167,14 +167,11 @@ public class ByzCastNodeVar1 extends ByzCastServerProxy {
        
         //Caso seja de ordem, tenta fazer match com a mensagem de payload correspondente
         if(isOrd){
-            print("Fila ord:" + ordQueue);
             //timestamp ordem
             match = payloads.remove(msgID);
             if(match != null){
                 // achou a mensagem de payload correspondente
-                print("achou a mensagem de payload correspondente");
                 if (ordQueue.peek().getId() == msgID){
-                    print("faz deliver");
                     // faz deliver e confere se a proxima da fila de ordem já está paired
                     msg = ordQueue.take();
                     deliver(msg, match);
@@ -192,7 +189,6 @@ public class ByzCastNodeVar1 extends ByzCastServerProxy {
             }
         } else {
             //timestamp ordem
-            print("Fila pay:" + payloads);
             //Caso seja de payload, tenta fazer match com a mensagem de ordem no começo da fila
             if(!ordQueue.isEmpty()){
                 if (ordQueue.peek().getId() == msgID){
@@ -240,19 +236,17 @@ public class ByzCastNodeVar1 extends ByzCastServerProxy {
                     if(!ordQueue.isEmpty()){
                         msgID = Long.valueOf(ordQueue.peek().getId());
                         match = payloads.remove(msgID);
-                        print("got here!");
-                        print(ordQueue);
-                        print(match);
-                        print(msgID);
+                        // print("got here!");
+                        // print(ordQueue);
+                        // print(match);
+                        // print(msgID);
                     }
                     while(match != null){
                         paired.remove(msgID);
                         msg = ordQueue.take();
                         deliver(msg, match);
 
-                        print("delivery made!");
-                        // print(ordQueue);
-                        // print(payloads);
+                        // print("delivery made!");
                         if(!ordQueue.isEmpty()){
                             msgID = Long.valueOf(ordQueue.peek().getId());
                             match = payloads.remove(msgID);

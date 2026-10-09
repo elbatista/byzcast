@@ -7,8 +7,11 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 import org.jgrapht.alg.lca.TarjanLCAFinder;
 import org.jgrapht.graph.DefaultEdge;
@@ -23,7 +26,7 @@ import util.FileManager;
 import util.Stats;
 import util.Util;
 
-public class ByzCastRandomClient extends ByzCastClientProxy {
+public class ByzCastRandomClientSequential extends ByzCastClientProxy {
     protected ArgsParser args;
     protected int seqNumber, totalTime, clientCount, randPayloadSize = 0;
     protected short numNodes = 0;
@@ -33,9 +36,10 @@ public class ByzCastRandomClient extends ByzCastClientProxy {
     private short [] dests;
     protected final Random gen;
     private int algo;
+    private ArrayList<Node> nodes;
     private String[] algorithm = new String[]{"ByzCast","Disseminator"};
     
-    public ByzCastRandomClient(short id, ArgsParser args, boolean start){
+    public ByzCastRandomClientSequential(short id, ArgsParser args, boolean start){
         super(id);
         this.args = args;
         this.totalTime = args.getDuration();
@@ -44,19 +48,22 @@ public class ByzCastRandomClient extends ByzCastClientProxy {
         this.clientCount = args.getClientCount();
         this.randPayloadSize = args.getRandPayloadSize();
         this.dests = toShortArray(args.getDests());
-        this.algo = args.getAlgorithm();
-        ArrayList<Node> nodes = files.loadHosts();
+        this.algo = 0;//args.getAlgorithm();
+        this.nodes = files.loadHosts();
         syncAllConnections = new CyclicBarrier(nodes.size()+1);
         // ArrayList<Boolean> activeChannelFlags = new ArrayList<>();
         // for (int i = 0; i < nodes.size(); i++) {
         //     activeChannelFlags.add(false);
         // }
         for(Node server : nodes) connectTo(server, syncAllConnections);
+        // sleep(500);
         // System.out.println(activeChannelFlags);
         numNodes = (short) nodes.size();
         short root = nodes.get(0).getId();
         lcafinder = new TarjanLCAFinder<Short,DefaultEdge>(tree, root);
         destsSizes = new int [numNodes];
+        // BlockingQueue<ByzCastMessage> ordQueue = new LinkedBlockingQueue<>();
+        // ConcurrentHashMap<Long, ByzCastMessage> payloads = new ConcurrentHashMap<>();
         if(start) start();
     }
     
@@ -102,13 +109,33 @@ public class ByzCastRandomClient extends ByzCastClientProxy {
         long startTime = System.currentTimeMillis(), elapsed = 0, now;
         int totalMsgs = 0;
 
+        // int connected = getOutChannels().size();
+
+        // print("Connected to", connected, "out of", nodes.size());
+        // print("Connected to servers:", getOutChannels().keySet());
+
         while ((elapsed / 1000) < totalTime) {
             ByzCastMessage m = newMessage();
+            ByzCastMessage payloadMsg;
+
+            //randPayloadSize = 8;
             
             generatePayload(m);
 
+            payloadMsg = m.cloneMessage(m, true); 
+            payloadMsg.setSplit(Split.PAY);
+            
+            m = m.setToOrder(m);
+
             now = System.currentTimeMillis();
+
+            //Encaminha msg PAY para os destinos conforme a árvore ✅
+
+            //Problema: Funcionando MELHOR que sendPayload??? 
+            sendPayloadWithReply(payloadMsg, nodes);
+
             multicast(m, algo);
+            
             stats.store((System.currentTimeMillis() - now), (m.getDst().length > 1));
             
             elapsed = (now - startTime);
@@ -148,7 +175,7 @@ public class ByzCastRandomClient extends ByzCastClientProxy {
     private ByzCastMessage newMessage(){
         ByzCastMessage m = new ByzCastMessage(nextSeqNumber());
         m.setType(Type.MSG);
-        m.setDst(generateMaxXDests(2));
+        m.setDst(generateMaxXDests(4));
         //m.setDst(dests);
         m.setCliId(getId());
         return m;

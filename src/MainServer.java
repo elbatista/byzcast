@@ -1,5 +1,6 @@
-import byzcast.ByzCastNodeVar1;
-import byzcast.ByzCastNode;
+import byzcast.ByzCastNodeSequential;
+import byzcast.ByzCastNodeLCA;
+import byzcast.ByzCastNodeParallel;
 import byzcast.DisseminatorNode;
 import util.ArgsParser;
 
@@ -9,10 +10,11 @@ public class MainServer {
         ArgsParser p = ArgsParser.getServerParser(args);
 
         if(p.getAlgorithm() == 0)
-        new ByzCastNode(p.getId(), p);
+        new ByzCastNodeLCA(p.getId(), p);
         //new ByzCastNodeVar1(p.getId(), p);
-        else
-        new ByzCastNodeVar1(p.getId(), p);
-            // new DisseminatorNode(p.getId(), p);
+        if(p.getAlgorithm() == 1)
+        new ByzCastNodeSequential(p.getId(), p);
+        if(p.getAlgorithm() == 2)
+        new ByzCastNodeParallel(p.getId(), p);
     }
 }

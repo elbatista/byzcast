@@ -26,7 +26,7 @@ import util.FileManager;
 import util.Stats;
 import util.Util;
 
-public class ByzCastRandomClientVar2 extends ByzCastClientProxy {
+public class ByzCastRandomClientParallel extends ByzCastClientProxy {
     protected ArgsParser args;
     protected int seqNumber, totalTime, clientCount, randPayloadSize = 0;
     protected short numNodes = 0;
@@ -39,7 +39,7 @@ public class ByzCastRandomClientVar2 extends ByzCastClientProxy {
     private ArrayList<Node> nodes;
     private String[] algorithm = new String[]{"ByzCast","Disseminator"};
     
-    public ByzCastRandomClientVar2(short id, ArgsParser args, boolean start){
+    public ByzCastRandomClientParallel(short id, ArgsParser args, boolean start){
         super(id);
         this.args = args;
         this.totalTime = args.getDuration();
@@ -120,15 +120,17 @@ public class ByzCastRandomClientVar2 extends ByzCastClientProxy {
             payloadMsg = m.cloneMessage(m, true); 
             payloadMsg.setSplit(Split.PAY);
             
-            m = m.setToOrder(m);
+            m.setSplit(Split.ORD);
+
+            //m = m.setToOrder(m);
 
             now = System.currentTimeMillis();
 
-            //Encaminha primeiro msg ORD
-            multicastNoReply(m, algo);
-
             //Encaminha msg PAY para os destinos conforme a árvore ✅
-            sendPayloadWithReply(payloadMsg, nodes);
+            sendPayloadNoLCA(payloadMsg, nodes, algo);
+            //sendPayload(payloadMsg, nodes);
+
+            multicast(m, algo);
             
             stats.store((System.currentTimeMillis() - now), (m.getDst().length > 1));
             
@@ -169,7 +171,7 @@ public class ByzCastRandomClientVar2 extends ByzCastClientProxy {
     private ByzCastMessage newMessage(){
         ByzCastMessage m = new ByzCastMessage(nextSeqNumber());
         m.setType(Type.MSG);
-        m.setDst(generateMaxXDests(2));
+        m.setDst(generateMaxXDests(4));
         //m.setDst(dests);
         m.setCliId(getId());
         return m;

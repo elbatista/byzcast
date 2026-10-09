@@ -24,7 +24,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 
 
-public class ByzCastNode extends ByzCastServerProxy {
+public class ByzCastNodeParallel extends ByzCastServerProxy {
     protected int numNodes;
     protected final Random gen;
     protected FileManager files;
@@ -39,7 +39,7 @@ public class ByzCastNode extends ByzCastServerProxy {
 
     //private volatile boolean running = true;
 
-    public ByzCastNode(short id, ArgsParser args){
+    public ByzCastNodeParallel(short id, ArgsParser args){
         super(id, args.getClientCount());
         this.files = new FileManager();
         this.gen = new Random(System.nanoTime());
@@ -81,7 +81,7 @@ public class ByzCastNode extends ByzCastServerProxy {
     @Override
     protected void receiveMsg(ByzCastMessage m){
 
-        //print("Got msg");
+        // print("Got msg");
 
         ByzCastMessage payloadMsg;
         msgsTotal++;
@@ -89,37 +89,17 @@ public class ByzCastNode extends ByzCastServerProxy {
 
         Set<Short> sent = new HashSet<>();
 
-        if (getId() == getLca(m,0)){
-            //Caso seja, separa payload de msg Ordem
-            // separar a msg na normal e em uma que é só o payload (sabe o id da de Ordem) -> randPayload
-
-            payloadMsg = m.cloneMessage(m, true); //arrumar
-            payloadMsg.setSplit(Split.PAY);
-            
-            m = m.setToOrder(m);
-
-            //Encaminha msg PAY para os destinos conforme a árvore ✅
-            for(Node n : connected){
-                if(payloadMsg.isAddressedTo(n.getId())){
-                    // print(payloadMsg);
-                    // print(n.getId());
-                    send(payloadMsg, n.getId());
+        if (m.getSplit() == Split.ORD && m.isAddressedTo(getId())) {
+            if(getId() == getLca(m,0)){
+                // m.setRandPayload(new byte[1]);
+                deliverLCA(m);
+            } else {
+                ordQueue.add(m);
+                try {
+                    messageMatcher(m.getId(),true);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
-            }
-
-            if(m.isAddressedTo(getId())){
-                deliver(m);
-                // print("LCA Delivered!");
-                // print(m.getId(), Arrays.toString(m.getDst()));
-            }
-        }
-
-        if (m.getSplit() == Split.ORD && m.isAddressedTo(getId()) && getId() != getLca(m,0)) {
-            ordQueue.add(m);
-            try {
-                messageMatcher(m.getId(),true);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
             }
         } else if (m.getSplit() == Split.PAY && m.isAddressedTo(getId())) {
             payloads.put(Long.valueOf(m.getId()), m);
@@ -128,6 +108,10 @@ public class ByzCastNode extends ByzCastServerProxy {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
+        }
+
+        if(getId() == getLca(m,0)){
+            m.setRandPayload(new byte[1]);
         }
 
         // envia msg de Ordem ✅
@@ -167,11 +151,14 @@ public class ByzCastNode extends ByzCastServerProxy {
        
         //Caso seja de ordem, tenta fazer match com a mensagem de payload correspondente
         if(isOrd){
+            print("Fila ord:" + ordQueue);
             //timestamp ordem
             match = payloads.remove(msgID);
             if(match != null){
                 // achou a mensagem de payload correspondente
+                //print("achou a mensagem de payload correspondente");
                 if (ordQueue.peek().getId() == msgID){
+                    //print("faz deliver");
                     // faz deliver e confere se a proxima da fila de ordem já está paired
                     msg = ordQueue.take();
                     deliver(msg, match);
@@ -189,6 +176,7 @@ public class ByzCastNode extends ByzCastServerProxy {
             }
         } else {
             //timestamp ordem
+            //print("Fila pay:" + payloads);
             //Caso seja de payload, tenta fazer match com a mensagem de ordem no começo da fila
             if(!ordQueue.isEmpty()){
                 if (ordQueue.peek().getId() == msgID){
@@ -236,17 +224,15 @@ public class ByzCastNode extends ByzCastServerProxy {
                     if(!ordQueue.isEmpty()){
                         msgID = Long.valueOf(ordQueue.peek().getId());
                         match = payloads.remove(msgID);
-                        // print("got here!");
-                        // print(ordQueue);
-                        // print(match);
-                        // print(msgID);
                     }
                     while(match != null){
                         paired.remove(msgID);
                         msg = ordQueue.take();
                         deliver(msg, match);
 
-                        // print("delivery made!");
+                        //print("delivery made!");
+                        // print(ordQueue);
+                        // print(payloads);
                         if(!ordQueue.isEmpty()){
                             msgID = Long.valueOf(ordQueue.peek().getId());
                             match = payloads.remove(msgID);
@@ -293,6 +279,12 @@ public class ByzCastNode extends ByzCastServerProxy {
     //     deliveryThread.start();
     // }
     
+    private void deliverLCA(ByzCastMessage Msg) {
+        // Envia direto
+        history.add(new LightMessage(Msg.getId(), Msg.getDst()));
+        sendReply(Msg);
+
+    }
 
     private void deliver(ByzCastMessage ordMsg, ByzCastMessage payMsg) {
         // Combina as informações se quiser
@@ -300,12 +292,6 @@ public class ByzCastNode extends ByzCastServerProxy {
         sendReply(ordMsg);
         // print("Delivered message with ID", ordMsg.getId(), " (ORD + PAY)");
         // print(Arrays.toString(ordMsg.getDst()));
-    }
-
-    private void deliver(ByzCastMessage m) {
-        history.add(new LightMessage(m.getId(), m.getDst()));
-        sendReply(m);
-        // print("Delivered message", m);
     }
 
     protected void finish(){
